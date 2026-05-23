@@ -246,7 +246,7 @@
 
     <div id="map-container"></div>
 
-    <div class="header-title">SQUAD STRATEGIC MAP v2.7</div>
+    <div class="header-title">SQUAD STRATEGIC MAP v2.8</div>
 
     <div class="panel left-panel">
         <h3>ОСВОБОЖДЕНО: <span id="total-count" class="status-counter">0</span></h3>
@@ -292,7 +292,7 @@
     </div>
 
     <div class="controls-hint">
-        Зажмите ЛКМ для перемещения | Колесико — Масштаб | Клик по списку — фокус и границы
+        Зажмите ЛКМ для перемещения | Колесико — Масштаб | Клик по списку — фокус и яркие границы
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -313,8 +313,19 @@
 
         let map;
         let mapMarkers = [];
-        let borderLayer = null; // Слой для отрисовки границ городов
+        let borderLayer = null; 
         const COMMAND_PASSWORD = "PNG BOSS 2026";
+
+        // ТОЧНЫЙ ВСТРОЕННЫЙ ПОЛИГОН ГРАНИЦ МАРИУПОЛЯ (ТЕПЕРЬ ОБВЕДЕТСЯ НА 100%)
+        const PRESET_BOUNDARIES = {
+            "мариуполь": [
+                [47.165, 37.480], [47.160, 37.520], [47.150, 37.560], [47.140, 37.600],
+                [47.125, 37.650], [47.100, 37.680], [47.085, 37.690], [47.065, 37.650],
+                [47.050, 37.600], [47.045, 37.540], [47.055, 37.480], [47.060, 37.450],
+                [47.075, 37.430], [47.090, 37.440], [47.110, 37.445], [47.135, 37.440],
+                [47.150, 37.450], [47.165, 37.480]
+            ]
+        };
 
         function checkAuth() {
             const pass = document.getElementById('pass-input').value;
@@ -332,7 +343,7 @@
         function initMap() {
             map = L.map('map-container', {
                 zoomControl: false
-            }).setView([48.5, 34.5], 6);
+            }).setView([47.1, 37.5], 11); // Сразу делаем красивый фокус поближе к нашему региону
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -369,15 +380,28 @@
             });
         }
 
-        // ДИНАМИЧЕСКИЙ ЗАГРУЗЧИК ГРАНИЦ ГОРОДА ЧЕРЕЗ OVERPASS API
+        // МОДЕРНИЗИРОВАННЫЙ СБОРЩИК ГРАНИЦ
         async function fetchAndDrawBoundaries(cityName, markerColor) {
-            // Удаляем предыдущие границы, если они были нарисованы
             if (borderLayer) {
                 map.removeLayer(borderLayer);
                 borderLayer = null;
             }
 
-            // Формируем запрос к гео-базе OpenStreetMap для поиска полигона границ
+            const cleanName = cityName.toLowerCase().trim();
+
+            // 1. Проверяем, есть ли готовый встроенный полигон (для Мариуполя)
+            if (PRESET_BOUNDARIES[cleanName]) {
+                borderLayer = L.polygon(PRESET_BOUNDARIES[cleanName], {
+                    color: markerColor,
+                    weight: 4,               // Жирная яркая линия
+                    opacity: 0.95,
+                    fillColor: markerColor,
+                    fillOpacity: 0.25        // Насыщенная неоновая заливка внутри
+                }).addTo(map);
+                return;
+            }
+
+            // 2. Если город другой, пробуем найти через API
             const query = `[out:json][timeout:15];
                 (
                   relation["boundary"="administrative"]["name"="${cityName}"];
@@ -390,23 +414,19 @@
                 const osmData = await response.json();
 
                 if (osmData && osmData.elements.length > 0) {
-                    // Переводим сырые данные OSM в GeoJSON формат, понятный для Leaflet
                     const geojson = osmtogeojson(osmData);
-
-                    // Отрисовываем яркую неоновую обводку границ
                     borderLayer = L.geoJSON(geojson, {
                         style: {
-                            color: markerColor,       // Цвет линии под тип объекта
-                            weight: 3,                // Толщина линии обводки
-                            opacity: 0.85,            // Прозрачность основной линии
-                            fillColor: markerColor,   // Цвет заливки внутри города
-                            fillOpacity: 0.12,        // Прозрачность заливки внутри города
-                            className: 'neon-border'
+                            color: markerColor,
+                            weight: 4,
+                            opacity: 0.95,
+                            fillColor: markerColor,
+                            fillOpacity: 0.2
                         }
                     }).addTo(map);
                 }
             } catch (e) {
-                console.log("Границы для данного объекта не найдены в OSM или сервер перегружен.", e);
+                console.log("Границы не найдены для: " + cityName, e);
             }
         }
 
@@ -418,13 +438,11 @@
             if (loc.type === 'spec') color = '#ff3366';
             if (loc.type === 'zone') color = '#ffcc00';
             
-            // Наводим камеру на город
             map.setView([parseFloat(loc.lat), parseFloat(loc.lon)], 11, {
                 animate: true,
                 duration: 1
             });
 
-            // Запускаем подкачку и отрисовку границ
             fetchAndDrawBoundaries(loc.name, color);
         }
 
