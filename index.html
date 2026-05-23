@@ -10,11 +10,9 @@
             --panel-bg: rgba(13, 17, 23, 0.88);
             --text-color: #c9d1d9;
             --border-color: #21262d;
-
-            /* Цвета фракций/типов */
-            --color-city: #00ff66;   /* Населенный пункт */
-            --color-spec: #ff3366;   /* Спецоперация */
-            --color-zone: #ffcc00;   /* Группировка / Зона */
+            --color-city: #00ff66;
+            --color-spec: #ff3366;
+            --color-zone: #ffcc00;
         }
 
         body, html {
@@ -37,7 +35,6 @@
             z-index: 1;
         }
 
-        /* Стили для интерфейса (панелей) */
         .panel {
             position: absolute;
             z-index: 10;
@@ -81,7 +78,6 @@
             text-align: center;
         }
 
-        /* Инструкция внизу */
         .controls-hint {
             position: absolute;
             bottom: 20px;
@@ -94,7 +90,6 @@
             pointer-events: none;
         }
 
-        /* Элементы управления */
         input, select, button {
             background: #161b22;
             border: 1px solid var(--border-color);
@@ -158,7 +153,6 @@
             gap: 5px;
         }
 
-        /* Фильтры */
         .filter-buttons {
             display: flex;
             flex-wrap: wrap;
@@ -174,7 +168,6 @@
             margin-bottom: 0;
         }
 
-        /* Списки */
         .list-container {
             flex: 1;
             overflow-y: auto;
@@ -248,8 +241,7 @@
             <button onclick="setFilter('zone')">ЗОНЫ</button>
         </div>
 
-        <div class="list-container" id="cities-list">
-            </div>
+        <div class="list-container" id="cities-list"></div>
     </div>
 
     <div class="panel right-panel">
@@ -258,8 +250,7 @@
             <input type="text" id="mission-text" placeholder="Текст боевой задачи...">
             <button class="btn-action" onclick="activateOperation()">АКТИВИРОВАТЬ ОПЕРАЦИЮ</button>
         </div>
-        <div id="missions-list">
-            </div>
+        <div id="missions-list"></div>
     </div>
 
     <div class="controls-hint">
@@ -270,7 +261,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // === НАСТРОЙКА ОБЛАКА FIREBASE ===
         const firebaseConfig = {
             databaseURL: "https://pubgproject-73a7a-default-rtdb.europe-west1.firebasedatabase.app/"
         };
@@ -278,7 +268,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Переменные состояния
         let isCommander = false;
         let currentFilter = 'all';
         let locationsData = {};
@@ -287,8 +276,6 @@
         let scene, camera, renderer, globe, controls;
         const markers = [];
         const globeRadius = 5;
-
-        // Пароль доступа
         const COMMAND_PASSWORD = "PNG BOSS 2026";
 
         function checkAuth() {
@@ -328,7 +315,7 @@
             dirLight.position.set(5, 5, 5);
             scene.add(dirLight);
 
-            // Создаем глобус с текстурой ночных огней Земли
+            // Создание глобуса и загрузка текстуры ночной Земли
             const geometry = new THREE.SphereGeometry(globeRadius, 64, 64);
             const textureLoader = new THREE.TextureLoader();
             const earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_lights_lrg.jpg');
@@ -345,9 +332,10 @@
             animate();
         }
 
+        // Анимация вращения и пульсации точек (Исправлено условие вращения)
         function animate() {
             requestAnimationFrame(animate);
-            if (!controls.state == -1) globe.rotation.y += 0.0005;
+            if (controls.state === -1) globe.rotation.y += 0.0005;
 
             const time = Date.now() * 0.006;
             markers.forEach(m => {
@@ -359,7 +347,6 @@
             renderer.render(scene, camera);
         }
 
-        // Перевод географических координат в 3D вектор на сфере
         function latLonToVector3(lat, lon, radius) {
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
@@ -371,9 +358,7 @@
             return new THREE.Vector3(x, y, z);
         }
 
-        // Синхронизация маркеров на глобусе
         function update3DMarkers() {
-            // Удаляем старые маркеры
             markers.forEach(m => scene.remove(m));
             markers.length = 0;
 
@@ -399,18 +384,15 @@
             });
         }
 
-        // Фокусировка камеры на объекте при клике из списка
         function focusOnLocation(id) {
             const loc = locationsData[id];
             if (!loc) return;
             const pos = latLonToVector3(parseFloat(loc.lat), parseFloat(loc.lon), globeRadius + 4);
-            
-            // Плавное перемещение (упрощенно)
             camera.position.copy(pos);
             controls.target.set(0,0,0);
         }
 
-        // СИНХРОНИЗАЦИЯ С БАЗОЙ ДАННЫХ В РЕАЛЬНОМ ВРЕМЕНИ
+        // Слушатели Firebase
         db.ref('locations').on('value', snapshot => {
             locationsData = snapshot.val() || {};
             updateUI();
@@ -422,7 +404,7 @@
             updateMissionsUI();
         });
 
-        // ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI)
+        // UI Списки объектов и миссий
         function updateUI() {
             document.getElementById('total-count').innerText = Object.keys(locationsData).length;
             const mList = document.getElementById('cities-list');
@@ -473,7 +455,7 @@
             update3DMarkers();
         }
 
-        // КОМАНДНЫЕ ФУНКЦИИ
+        // Добавление и удаление объектов
         function addNewLocation() {
             if (!isCommander) return;
             const name = document.getElementById('new-name').value;
@@ -483,7 +465,6 @@
 
             if (!name) return alert('Введите название!');
 
-            // Тестовые координаты по умолчанию, если пустые
             if (!lat || !lon) {
                 lat = (45 + Math.random() * 10).toFixed(3);
                 lon = (30 + Math.random() * 25).toFixed(3);
@@ -516,11 +497,8 @@
             }
         }
 
-        // Запуск при загрузке страницы
         window.onload = () => {
             init3D();
-            
-            // Адаптивность изменения размера окна
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
