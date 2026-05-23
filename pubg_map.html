@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQUAD HQ: Global Recon Control</title>
+    <style>
+        :root {
+            --bg-color: #080b10;
+            --panel-bg: rgba(13, 17, 23, 0.88);
+            --text-color: #c9d1d9;
+            --border-color: #21262d;
+            
+            /* Цвета фракций/типов */
+            --color-city: #00ff66;   /* Населенный пункт */
+            --color-spec: #ff3366;   /* Спецоперация */
+            --color-zone: #ffcc00;   /* Группировка / Зона */
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-color);
+            font-family: 'Courier New', Courier, monospace; color: var(--text-color);
+        }
+
+        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        .ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+            pointer-events: none; display: grid; grid-template-columns: 340px 1fr 360px; padding: 20px; box-sizing: border-box;
+        }
+
+        .panel {
+            background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 4px;
+            padding: 15px; display: flex; flex-direction: column; pointer-events: auto;
+            backdrop-filter: blur(8px); box-shadow: 0 0 25px rgba(0,0,0,0.7); max-height: calc(100vh - 40px);
+        }
+
+        h2 {
+            margin-top: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 2px;
+            border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between;
+        }
+
+        /* Фильтры типов */
+        .filter-bar { display: flex; gap: 5px; margin-bottom: 10px; }
+        .filter-btn {
+            background: #161b22; border: 1px solid var(--border-color); color: #8b949e;
+            padding: 4px 8px; font-size: 0.75rem; cursor: pointer; border-radius: 3px; flex-grow: 1;
+        }
+        .filter-btn.active { color: #fff; border-color: #fff; font-weight: bold; }
+
+        .list-container { overflow-y: auto; flex-grow: 1; }
+        
+        .city-item {
+            padding: 8px; margin-bottom: 5px; background: rgba(255,255,255,0.02);
+            border-left: 3px solid var(--clr); font-size: 0.85rem; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .city-item:hover { background: rgba(255,255,255,0.07); }
+        .del-btn { color: #ff3366; cursor: pointer; padding: 0 5px; display: none; }
+
+        /* Админка (Панель Командира) */
+        .admin-only { display: none; background: rgba(22, 27, 34, 0.9); border: 1px dashed #ffcc00; padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .admin-btn { background: #ffcc00 !important; color: #000 !important; font-weight: bold; }
+        
+        input, select {
+            background: #161b22; border: 1px solid var(--border-color); color: #fff;
+            padding: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box; font-family: inherit;
+        }
+        button {
+            background: #21262d; border: 1px solid var(--border-color); color: #fff;
+            padding: 8px; width: 100%; cursor: pointer; font-family: inherit; text-transform: uppercase;
+        }
+        button:hover { background: #30363d; }
+
+        /* Блок миссий */
+        .mission-item { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 10px; margin-bottom: 8px; }
+        .progress-bar { background: #161b22; height: 6px; margin: 6px 0; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #ffcc00; width: 0%; transition: width 0.4s; }
+
+        /* Центр HUD */
+        .center-hud { display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px; }
+        .hq-title { background: var(--panel-bg); padding: 10px 30px; border: 1px solid var(--border-color); font-weight: bold; font-size: 1.2rem; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,255,102,0.3); }
+        .auth-panel { pointer-events: auto; background: var(--panel-bg); padding: 5px; border: 1px solid var(--border-color); }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #30363d; }
+    </style>
+    
+    <!-- Подключаем 3D-библиотеки -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-layer">
+        <!-- ЛЕВАЯ ПАНЕЛЬ: База завоеваний -->
+        <div class="panel">
+            <h2>ОСВОБОЖДЕНО: <span id="total-count" style="color:var(--color-city)">0</span></h2>
+            
+            <!-- Вход для командира -->
+            <div class="auth-panel" style="margin-bottom: 10px;">
+                <input type="password" id="pass-input" placeholder="Код Командира..." style="margin:0; width:70%; display:inline-block;">
+                <button onclick="checkAuth()" style="width:26%; display:inline-block; padding:5px; font-size:0.7rem;">ВХОД</button>
+            </div>
+
+            <!-- Форма добавления (Видна только Командиру) -->
+            <div class="admin-only" id="add-city-form">
+                <div style="font-size:0.75rem; color:#ffcc00; margin-bottom:5px;">[РЕЖИМ КОМАНДОВАНИЯ]</div>
+                <input type="text" id="new-name" placeholder="Название объекта/миссии">
+                <select id="new-type">
+                    <option value="city">🟢 Населенный пункт</option>
+                    <option value="spec">🔴 Спецоперация</option>
+                    <option value="zone">🟡 Группировка / Регион</option>
+                </select>
+                <div style="display: flex; gap:5px;">
+                    <input type="number" id="new-lat" step="0.001" placeholder="Широта (Lat)" style="width:50%;">
+                    <input type="number" id="new-lon" step="0.001" placeholder="Долгота (Lon)" style="width:50%;">
+                </div>
+                <button class="admin-btn" onclick="addNewLocation()">Внести в реестр</button>
+            </div>
+
+            <div class="filter-bar">
+                <button class="filter-btn active" id="f-all" onclick="setFilter('all')">ВСЕ</button>
+                <button class="filter-btn" id="f-city" onclick="setFilter('city')">ГОРОДА</button>
+                <button class="filter-btn" id="f-spec" onclick="setFilter('spec')">СПЕЦ</button>
+                <button class="filter-btn" id="f-zone" onclick="setFilter('zone')">ЗОНЫ</button>
+            </div>
+
+            <div class="list-container" id="cities-list"></div>
+        </div>
+
+        <!-- ЦЕНТР -->
+        <div class="center-hud">
+            <div class="hq-title">SQUAD STRATEGIC MAP v2.0</div>
+            <div style="color:#666; font-size:0.75rem; background:rgba(0,0,0,0.5); padding:5px;">ЛКМ — вращение | Колесико — Зум | Клик по списку — фокус</div>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ: Оперативный план -->
+        <div class="panel">
+            <h2>ТЕКУЩИЕ МИССИИ</h2>
+            
+            <!-- Добавление миссий (Командир) -->
+            <div class="admin-only" id="add-mission-form">
+                <input type="text" id="mission-text" placeholder="Текст боевой задачи...">
+                <button class="admin-btn" onclick="addNewMission()">Активировать операцию</button>
+            </div>
+
+            <div class="list-container" id="missions-list"></div>
+        </div>
+    </div>
+
+    <!-- Подключаем Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // === НАСТРОЙКА ОБЛАКА FIREBASE ===
+        // Сюда ты вставишь свои ключи из инструкции ниже:
+        const firebaseConfig = {
+            databaseURL: "https://pubgproject-73a7a-default-rtdb.europe-west1.firebasedatabase.app/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Переменные состояния
+        let isCommander = false;
+        let currentFilter = 'all';
+        let locationsData = {};
+        let missionsData = {};
+        
+        let scene, camera, renderer, globe, controls;
+        const markers = [];
+        const globeRadius = 5;
+
+        // Пароль доступа (можешь поменять прямо здесь)
+        const COMMAND_PASSWORD = "PUBG_BOSS_2026"; 
+
+        function checkAuth() {
+            const pass = document.getElementById('pass-input').value;
+            if (pass === COMMAND_PASSWORD) {
+                isCommander = true;
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+                document.querySelectorAll('.del-btn').forEach(el => el.style.display = 'inline');
+                alert("Доступ подтвержден. Приветствую, Командир.");
+                updateUI();
+            } else {
+                alert("Доступ запрещен. Неверный шифр.");
+            }
+        }
+
+        // Инициализация 3D сцены
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 6;
+            controls.maxDistance = 25;
+
+            scene.add(new THREE.AmbientLight(0x555555));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            // Создаем глобус с реальной картой Земли высокого разрешения
+            const geometry = new THREE.SphereGeometry(globeRadius, 64, 64);
+            const textureLoader = new THREE.TextureLoader();
+            
+            // Спутниковая текстура NASA (работает онлайн)
+            const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg');
+            
+            const material = new THREE.MeshPhongMaterial({
+                map: earthTexture,
+                specular: 0x111111,
+                shininess: 10
+            });
+            
+            globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                if (!controls.state == -1) globe.rotation.y += 0.0005;
+                
+                const time = Date.now() * 0.006;
+                markers.forEach(m => {
+                    const scale = 1 + Math.sin(time + m.userData.phase) * 0.2;
+                    m.scale.set(scale, scale, scale);
+                });
+
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        function convertCoords(lat, lon, radius) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+            return new THREE.Vector3(
+                -(radius * Math.sin(phi) * Math.sin(theta)),
+                radius * Math.cos(phi),
+                radius * Math.sin(phi) * Math.cos(theta)
+            );
+        }
+
+        // Обновление маркеров на сфере
+        function update3DMarkers() {
+            // Удаляем старые
+            while(markers.length > 0) {
+                const m = markers.pop();
+                globe.remove(m);
+            }
+
+            // Ставим актуальные
+            Object.keys(locationsData).forEach(id => {
+                const loc = locationsData[id];
+                if (currentFilter !== 'all' && loc.type !== currentFilter) return;
+
+                let color = 0x00ff66; // city
+                if(loc.type === 'spec') color = 0xff3366;
+                if(loc.type === 'zone') color = 0xffcc00;
+
+                const pos = convertCoords(parseFloat(loc.lat), parseFloat(loc.lon), globeRadius);
+                const geom = new THREE.SphereGeometry(0.09, 16, 16);
+                const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85 });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.copy(pos);
+                
+                mesh.userData = { id: id, name: loc.name, phase: Math.random() * 5 };
+                globe.add(mesh);
+                markers.push(mesh);
+            });
+        }
+
+        function focusOn(name) {
+            const marker = markers.find(m => m.userData.name === name);
+            if (!marker) return;
+            const worldPos = marker.position.clone().applyMatrix4(globe.matrixWorld);
+            const camTarget = worldPos.clone().normalize().multiplyScalar(11);
+            
+            let s = 0;
+            function move() {
+                if(s++ < 25) {
+                    camera.position.lerp(camTarget, 0.15);
+                    controls.target.lerp(worldPos, 0.15);
+                    requestAnimationFrame(move);
+                }
+            }
+            move();
+        }
+
+        // СИНХРОНИЗАЦИЯ С БАЗОЙ ДАННЫХ В РЕАЛЬНОМ ВРЕМЕНИ
+        db.ref('locations').on('value', snapshot => {
+            locationsData = snapshot.val() || {};
+            updateUI();
+            update3DMarkers();
+        });
+
+        db.ref('missions').on('value', snapshot => {
+            missionsData = snapshot.val() || {};
+            updateUI();
+        });
+
+        // ОБНОВЛЕНИЕ ИНТЕРФЕЙСА (UI)
+        function updateUI() {
+            document.getElementById('total-count').innerText = Object.keys(locationsData).length;
+            
+            // Рендер городов
+            const list = document.getElementById('cities-list');
+            list.innerHTML = '';
+            
+            Object.keys(locationsData).forEach(id => {
+                const loc = locationsData[id];
+                if (currentFilter !== 'all' && loc.type !== currentFilter) return;
+
+                let clr = 'var(--color-city)';
+                if(loc.type === 'spec') clr = 'var(--color-spec)';
+                if(loc.type === 'zone') clr = 'var(--color-zone)';
+
+                const item = document.createElement('div');
+                item.className = 'city-item';
+                item.style.setProperty('--clr', clr);
+                item.innerHTML = `
+                    <span onclick="focusOn('${loc.name}')">📍 ${loc.name}</span>
+                    <span class="del-btn" style="display:${isCommander?'inline':'none'}" onclick="deleteLocation('${id}')">✕</span>
+                `;
+                list.appendChild(item);
+            });
+
+            // Рендер миссий
+            const mList = document.getElementById('missions-list');
+            mList.innerHTML = '';
+            Object.keys(missionsData).forEach(id => {
+                const m = missionsData[id];
+                const item = document.createElement('div');
+                item.className = 'mission-item';
+                item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                        <span>💥 ${m.text}</span>
+                        <span class="del-btn" style="display:${isCommander?'inline':'none'}" onclick="deleteMission('${id}')">✕</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${m.progress}%"></div></div>
+                    <div style="font-size:0.7rem; color:#8b949e; cursor:${isCommander?'pointer':'default'}" onclick="stepProgress('${id}', ${m.progress})">
+                        Выполнено: ${m.progress}% ${isCommander?'[Клик для +20%]':''}
+                    </div>
+                `;
+                mList.appendChild(item);
+            });
+        }
+
+        // КОМАНДНЫЕ ФУНКЦИИ (ДЛЯ МОДИФИКАЦИИ БАЗЫ)
+        function addNewLocation() {
+            if(!isCommander) return;
+            const name = document.getElementById('new-name').value;
+            const type = document.getElementById('new-type').value;
+            let lat = document.getElementById('new-lat').value;
+            let lon = document.getElementById('new-lon').value;
+
+            if(!name) return alert('Введите название!');
+            
+            // Если координаты не введены, берем случайные в районе Европы/СНГ для теста
+            if(!lat || !lon) {
+                lat = (45 + Math.random() * 10).toFixed(3);
+                lon = (30 + Math.random() * 25).toFixed(3);
+            }
+
+            db.ref('locations').push({ name, type, lat, lon });
+            document.getElementById('new-name').value = '';
+        }
+
+        function deleteLocation(id) { if(isCommander && confirm('Удалить из реестра?')) db.ref('locations/'+id).remove(); }
+        
+        function addNewMission() {
+            if(!isCommander) return;
+            const text = document.getElementById('mission-text').value;
+            if(!text) return;
+            db.ref('missions').push({ text, progress: 0 });
+            document.getElementById('mission-text').value = '';
+        }
+        function deleteMission(id) { if(isCommander && confirm('Удалить операцию?')) db.ref('missions/'+id).remove(); }
+        
+        function stepProgress(id, current) {
+            if(!isCommander) return;
+            let next = current + 20;
+            if(next > 100) next = 0;
+            db.ref('missions/'+id).update({ progress: next });
+        }
+
+        function setFilter(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('f-'+type).style.borderColor = '#fff';
+            updateUI();
+            update3DMarkers();
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.onload = () => { init3D(); };
+    </script>
+</body>
+</html>
