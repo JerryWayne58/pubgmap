@@ -26,13 +26,15 @@
             color: var(--text-color);
         }
 
-        #canvas-container {
+        /* Контейнер для 2D карты */
+        #map-container {
             width: 100%;
             height: 100%;
             position: absolute;
             top: 0;
             left: 0;
             z-index: 1;
+            background-color: #0e1117;
         }
 
         .panel {
@@ -76,6 +78,7 @@
             border: 1px solid var(--border-color);
             font-weight: bold;
             text-align: center;
+            pointer-events: none;
         }
 
         .controls-hint {
@@ -88,6 +91,9 @@
             opacity: 0.6;
             text-align: center;
             pointer-events: none;
+            background: var(--panel-bg);
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
         }
 
         input, select, button {
@@ -199,17 +205,43 @@
             float: right;
             color: #00ff66;
         }
+
+        /* Стили для кастомных пульсирующих меток на карте */
+        .custom-marker {
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            animation: pulse 1.8s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 1; }
+            50% { transform: scale(1.2); box-shadow: 0 0 15px currentColor; }
+            100% { transform: scale(0.9); opacity: 1; }
+        }
+
+        /* Стилизация попапов на карте под общую тему */
+        .leaflet-popup-content-wrapper {
+            background: var(--panel-bg) !important;
+            color: var(--text-color) !important;
+            border: 1px solid var(--border-color);
+            font-family: 'Courier New', monospace;
+            border-radius: 4px;
+        }
+        .leaflet-popup-tip {
+            background: var(--panel-bg) !important;
+            border-left: 1px solid var(--border-color);
+            border-down: 1px solid var(--border-color);
+        }
     </style>
 
-    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://unpkg.com/three-globe"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
+    <div id="map-container"></div>
 
-    <div class="header-title">SQUAD STRATEGIC MAP v2.0</div>
+    <div class="header-title">SQUAD STRATEGIC MAP v2.5</div>
 
     <div class="panel left-panel">
         <h3>ОСВОБОЖДЕНО: <span id="total-count" class="status-counter">0</span></h3>
@@ -255,7 +287,7 @@
     </div>
 
     <div class="controls-hint">
-        ЛКМ — вращение | Колесико — Зум | Клик по списку — фокус
+        Зажмите ЛКМ для перемещения | Колесико — Масштаб | Клик по списку — фокус
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -274,7 +306,8 @@
         let locationsData = {};
         let missionsData = {};
 
-        let scene, camera, renderer, myGlobe, controls;
+        let map;
+        let mapMarkers = [];
         const COMMAND_PASSWORD = "PNG BOSS 2026";
 
         function checkAuth() {
@@ -290,105 +323,70 @@
             }
         }
 
-        function init3D() {
-            const container = document.getElementById('canvas-container');
-            scene = new THREE.Scene();
+        // Инициализация плоской 2D карты (как в Google)
+        function initMap() {
+            // Центрируем карту примерно на восточной Европе
+            map = L.map('map-container', {
+                zoomControl: false // Отключаем стандартные кнопки +/-, чтобы не портить дизайн
+            }).setView([48.5, 34.5], 5);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 0, 15);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            container.appendChild(renderer.domElement);
-
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 6;
-            controls.maxDistance = 25;
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-            scene.add(ambientLight);
-
-            // Инициализируем специальный глобус, который идеально стыкуется с картами типа Google
-            myGlobe = new ThreeGlobe()
-                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-                .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
-                .labelsRadiusScale(1.001);
-
-            scene.add(myGlobe);
-
-            animate();
+            // Подключаем стильную темную карту с четкими границами и названиями стран/городов
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
         }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Плавное вращение глобуса, если юзер его не трогает
-            if (controls.state === -1) {
-                myGlobe.rotation.y += 0.0005;
-            }
+        // Синхронизация 2D маркеров на карте
+        function updateMapMarkers() {
+            // Удаляем старые маркеры с карты
+            mapMarkers.forEach(m => map.removeLayer(m));
+            mapMarkers = [];
 
-            controls.update();
-            renderer.render(scene, camera);
+            Object.keys(locationsData).forEach(id => {
+                const loc = locationsData[id];
+                if (currentFilter !== 'all' && loc.type !== currentFilter) return;
+
+                let markerColor = '#00ff66';
+                if (loc.type === 'spec') markerColor = '#ff3366';
+                if (loc.type === 'zone') markerColor = '#ffcc00';
+
+                // Создаем кастомную неоновую точку на карте
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="width:12px; height:12px; background-color:${markerColor}; border-radius:50%; color:${markerColor};"></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                });
+
+                // Ставим маркер на карту
+                const marker = L.marker([parseFloat(loc.lat), parseFloat(loc.lon)], { icon: customIcon })
+                    .bindPopup(`<b>${loc.name}</b><br>Тип: ${loc.type.toUpperCase()}`)
+                    .addTo(map);
+
+                // Сохраняем ссылку, чтобы иметь возможность быстро навестись
+                marker.userData = { id: id };
+                mapMarkers.push(marker);
+            });
         }
 
-        // Обновление умных 3D-меток
-        function update3DMarkers() {
-            const formattedData = Object.keys(locationsData)
-                .map(id => {
-                    const loc = locationsData[id];
-                    let color = '#00ff66';
-                    if (loc.type === 'spec') color = '#ff3366';
-                    if (loc.type === 'zone') color = '#ffcc00';
-
-                    return {
-                        id: id,
-                        lat: parseFloat(loc.lat),
-                        lng: parseFloat(loc.lon),
-                        name: loc.name,
-                        color: color,
-                        type: loc.type
-                    };
-                })
-                .filter(loc => currentFilter === 'all' || loc.type === currentFilter);
-
-            // Автоматическое и безошибочное позиционирование на сфере встроенными методами библиотеки
-            myGlobe.labelsData(formattedData)
-                .labelLat(d => d.lat)
-                .labelLng(d => d.lng)
-                .labelText(d => d.name)
-                .labelSize(0.3)
-                .labelDotRadius(0.15)
-                .labelColor(d => d.color)
-                .labelResolution(30);
-        }
-
+        // Центрирование карты на объекте при клике из меню
         function focusOnLocation(id) {
             const loc = locationsData[id];
             if (!loc) return;
-
-            // Конвертируем координаты для камеры
-            const lat = parseFloat(loc.lat);
-            const lng = parseFloat(loc.lon);
             
-            const phi = (90 - lat) * (Math.PI / 180);
-            const theta = (lng + 180) * (Math.PI / 180);
-            const r = 9; // Расстояние камеры от центра глобуса при фокусе
-
-            const x = -(r * Math.sin(phi) * Math.sin(theta));
-            const y = r * Math.cos(phi);
-            const z = r * Math.sin(phi) * Math.cos(theta);
-
-            camera.position.set(x, y, z);
-            controls.target.set(0, 0, 0);
+            // Плавно перемещаем карту к точке (как на Google Maps)
+            map.setView([parseFloat(loc.lat), parseFloat(loc.lon)], 8, {
+                animate: true,
+                duration: 1.2
+            });
         }
 
         db.ref('locations').on('value', snapshot => {
             locationsData = snapshot.val() || {};
             updateUI();
-            update3DMarkers();
+            updateMapMarkers();
         });
 
         db.ref('missions').on('value', snapshot => {
@@ -443,7 +441,7 @@
         function setFilter(filterType) {
             currentFilter = filterType;
             updateUI();
-            update3DMarkers();
+            updateMapMarkers();
         }
 
         async function addNewLocation() {
@@ -519,11 +517,10 @@
         }
 
         window.onload = () => {
-            init3D();
+            initMap();
+            // Обновляем размеры карты при изменении окна
             window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+                if (map) map.invalidateSize();
             });
         };
     </script>
