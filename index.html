@@ -291,7 +291,7 @@
             }
         }
 
-        // Инициализация 3D сцены
+        // Инициализация 3D глобуса
         function init3D() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
@@ -315,10 +315,12 @@
             dirLight.position.set(5, 5, 5);
             scene.add(dirLight);
 
-            // Создание глобуса и загрузка текстуры ночной Земли
+            // Создание геометрии сферы глобуса
             const geometry = new THREE.SphereGeometry(globeRadius, 64, 64);
             const textureLoader = new THREE.TextureLoader();
-            const earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_lights_lrg.jpg');
+            
+            // Новая стабильная ссылка на ночную карту Земли, работающая на GitHub Pages без ошибок CORS
+            const earthTexture = textureLoader.load('https://unpkg.com/three-globe/example/img/earth-night.jpg');
 
             const material = new THREE.MeshPhongMaterial({
                 map: earthTexture,
@@ -332,11 +334,16 @@
             animate();
         }
 
-        // Анимация вращения и пульсации точек (Исправлено условие вращения)
+        // Главный цикл анимации (Исправлена автопрокрутка)
         function animate() {
             requestAnimationFrame(animate);
-            if (controls.state === -1) globe.rotation.y += 0.0005;
+            
+            // Если пользователь не перетаскивает глобус мышкой, он плавно вращается
+            if (controls.state === -1) {
+                globe.rotation.y += 0.0005;
+            }
 
+            // Эффект циклической пульсации для маркеров на карте
             const time = Date.now() * 0.006;
             markers.forEach(m => {
                 const scale = 1 + Math.sin(time + m.userData.phase) * 0.2;
@@ -347,6 +354,7 @@
             renderer.render(scene, camera);
         }
 
+        // Проекция координат Lat/Lon на 3D сферу
         function latLonToVector3(lat, lon, radius) {
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
@@ -358,6 +366,7 @@
             return new THREE.Vector3(x, y, z);
         }
 
+        // Обновление 3D точек на глобусе
         function update3DMarkers() {
             markers.forEach(m => scene.remove(m));
             markers.length = 0;
@@ -384,6 +393,7 @@
             });
         }
 
+        // Перемещение камеры к выбранному из списка объекту
         function focusOnLocation(id) {
             const loc = locationsData[id];
             if (!loc) return;
@@ -392,7 +402,7 @@
             controls.target.set(0,0,0);
         }
 
-        // Слушатели Firebase
+        // Получение изменений из Firebase в реальном времени
         db.ref('locations').on('value', snapshot => {
             locationsData = snapshot.val() || {};
             updateUI();
@@ -404,7 +414,7 @@
             updateMissionsUI();
         });
 
-        // UI Списки объектов и миссий
+        // Синхронизация списков интерфейса (UI)
         function updateUI() {
             document.getElementById('total-count').innerText = Object.keys(locationsData).length;
             const mList = document.getElementById('cities-list');
@@ -455,7 +465,7 @@
             update3DMarkers();
         }
 
-        // Добавление и удаление объектов
+        // Командные функции изменения баз данных
         function addNewLocation() {
             if (!isCommander) return;
             const name = document.getElementById('new-name').value;
@@ -497,6 +507,7 @@
             }
         }
 
+        // Обработчик изменения размеров экрана
         window.onload = () => {
             init3D();
             window.addEventListener('resize', () => {
