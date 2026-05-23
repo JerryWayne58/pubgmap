@@ -220,7 +220,7 @@
             const textureLoader = new THREE.TextureLoader();
             
             // Спутниковая текстура NASA (работает онлайн)
-            const earthTexture = textureLoader.load('https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg');
+            const earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
             
             const material = new THREE.MeshPhongMaterial({
                 map: earthTexture,
