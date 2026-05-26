@@ -23,52 +23,54 @@
 
         /* Боковая панель управления */
         #sidebar {
-            width: 380px;
+            width: 420px;
             background-color: #161b22;
             border-right: 1px solid #30363d;
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 15px;
             z-index: 1000;
             box-shadow: 4px 0 15px rgba(0,0,0,0.5);
         }
 
         h2 {
             color: #58a6ff;
-            font-size: 1.4rem;
-            margin-bottom: 15px;
+            font-size: 1.3rem;
+            margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
             border-bottom: 2px solid #30363d;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
 
         h3 {
             color: #8b949e;
-            font-size: 1rem;
-            margin: 15px 0 8px 0;
+            font-size: 0.95rem;
+            margin: 10px 0 5px 0;
+            text-transform: uppercase;
+            font-weight: 600;
         }
 
         .control-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #8b949e;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         input, select, button {
             width: 100%;
-            padding: 10px;
+            padding: 9px;
             background-color: #21262d;
             border: 1px solid #30363d;
             border-radius: 6px;
             color: #f0f6fc;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
             transition: all 0.2s ease;
         }
 
@@ -78,24 +80,27 @@
             box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
         }
 
-        /* Кнопки фильтров */
+        /* Кнопки глобального фильтра типов */
         .filter-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 12px;
         }
 
         .filter-btn {
-            padding: 8px;
-            font-size: 0.8rem;
+            padding: 6px 4px;
+            font-size: 0.75rem;
             background-color: #21262d;
             border: 1px solid #30363d;
             color: #c9d1d9;
             cursor: pointer;
             border-radius: 6px;
-            font-weight: normal;
             margin-bottom: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .filter-btn.active {
@@ -113,131 +118,109 @@
             border: none;
         }
 
-        button.main-action:hover {
-            background-color: #2ea043;
+        button.main-action:hover { background-color: #2ea043; }
+        button.secondary { background-color: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+        button.secondary:hover { background-color: #30363d; }
+        button.danger { background-color: #da3633; }
+        button.danger:hover { background-color: #f85149; }
+
+        .btn-row { display: flex; gap: 8px; }
+        .btn-row div { flex: 1; }
+
+        .admin-only { display: none; }
+
+        .click-hint {
+            font-size: 0.75rem;
+            color: #58a6ff;
+            background-color: rgba(88,166,255,0.1);
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px dashed rgba(88,166,255,0.3);
+            margin-bottom: 8px;
+            text-align: center;
         }
 
-        button.secondary {
-            background-color: #21262d;
-            border: 1px solid #30363d;
-            color: #c9d1d9;
-        }
-
-        button.secondary:hover {
-            background-color: #30363d;
-        }
-
-        button.danger {
-            background-color: #da3633;
-        }
-
-        button.danger:hover {
-            background-color: #f85149;
-        }
-
-        .btn-row {
-            display: flex;
+        /* Двухколоночный контейнер для списков задач */
+        .lists-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
-        }
-
-        .btn-row div {
             flex: 1;
+            min-height: 0; /* Важно для скролла */
         }
 
-        /* Админ-зона */
-        .admin-only {
-            display: none;
+        .column-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
-        /* Список локаций */
-        #location-list-container {
+        .list-scroll {
             flex: 1;
             overflow-y: auto;
-            margin-top: 10px;
             border: 1px solid #30363d;
             border-radius: 6px;
             background-color: #0d1117;
         }
 
+        /* Элемент списка */
         .location-item {
-            padding: 12px;
+            padding: 8px;
             border-bottom: 1px solid #30363d;
             cursor: pointer;
             transition: background-color 0.2s;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            position: relative;
         }
 
-        .location-item:hover {
-            background-color: #161b22;
-        }
+        .location-item:hover { background-color: #161b22; }
+        .location-title { font-weight: bold; color: #f0f6fc; font-size: 0.85rem; padding-right: 35px; }
+        .location-meta { font-size: 0.75rem; color: #8b949e; margin-top: 3px; display: flex; justify-content: space-between; align-items: center; }
 
-        .location-info {
-            flex: 1;
-        }
-
-        .location-title {
-            font-weight: bold;
-            color: #f0f6fc;
-            font-size: 0.95rem;
-        }
-
-        .location-meta {
-            font-size: 0.8rem;
-            color: #8b949e;
-            margin-top: 3px;
+        /* Иконки управления в карточке */
+        .item-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
             display: flex;
-            justify-content: space-between;
+            gap: 4px;
         }
 
-        .badge {
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        .badge-operation { background-color: #38235c; color: #d3bcf2; }
-        .badge-mission { background-color: #1f6feb; color: #ffffff; }
-        .badge-task { background-color: #9e6a00; color: #f8e3a1; }
-        .badge-cleared { background-color: #238636; color: #ffffff; }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #f85149;
-            cursor: pointer;
-            font-size: 1.1rem;
-            width: auto;
-            margin: 0;
-            padding: 0 5px;
-            display: none;
-        }
-
-        .delete-btn:hover {
-            color: #ff7b72;
-        }
-
-        /* Контейнер карты */
-        #map {
-            flex: 1;
-            height: 100vh;
-            background-color: #0b0e14;
-        }
-
-        /* Стилизация Leaflet */
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            background: #161b22 !important;
-            color: #f0f6fc !important;
+        .action-icon {
+            background: #21262d;
             border: 1px solid #30363d;
-            border-radius: 8px;
+            color: #c9d1d9;
+            cursor: pointer;
+            font-size: 0.8rem;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            margin: 0;
+        }
+
+        .action-icon.complete-btn:hover { background-color: #238636; color: #fff; border-color: #2ea043; }
+        .action-icon.return-btn:hover { background-color: #9e6a00; color: #fff; border-color: #f2cc60; }
+        .action-icon.delete-btn { display: none; } /* Показывается только админу */
+        .action-icon.delete-btn:hover { background-color: #da3633; color: #fff; border-color: #f85149; }
+
+        /* Плашки типов */
+        .badge { font-size: 0.7rem; padding: 1px 4px; border-radius: 4px; font-weight: bold; }
+        .badge-operation { background-color: #38235c; color: #d3bcf2; }
+        .badge-city { background-color: #0c2d54; color: #58a6ff; }
+        .badge-zone { background-color: #4d2600; color: #f2cc60; }
+
+        /* Карта */
+        #map { flex: 1; height: 100vh; background-color: #0b0e14; }
+
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: #161b22 !important; color: #f0f6fc !important; border: 1px solid #30363d; border-radius: 8px;
         }
         .leaflet-popup-close-button { color: #8b949e !important; }
-        .leaflet-bar a {
-            background-color: #161b22 !important;
-            color: #c9d1d9 !important;
-            border-bottom: 1px solid #30363d !important;
-        }
     </style>
 </head>
 <body>
@@ -246,64 +229,70 @@
         <h2>Стратег-Панель</h2>
         
         <div class="control-group">
-            <label for="admin-pass">Пароль администратора</label>
             <div class="btn-row" style="margin-bottom: 0;">
-                <input type="password" id="admin-pass" placeholder="Введи пароль" style="margin-bottom: 0;">
-                <button id="login-btn" class="main-action" style="width: auto; padding: 10px 15px;">Войти</button>
+                <input type="password" id="admin-pass" placeholder="Пароль администратора" style="margin-bottom: 0;">
+                <button id="login-btn" class="main-action" style="width: auto; padding: 9px 12px;">Войти</button>
             </div>
         </div>
 
-        <h3>Фильтр задач</h3>
+        <h3>Фильтр типов</h3>
         <div class="filter-container">
-            <button class="filter-btn active" data-filter="all">Все объекты</button>
-            <button class="filter-btn" data-filter="operation">Спецоперации</button>
-            <button class="filter-btn" data-filter="mission">Текущие миссии</button>
-            <button class="filter-btn" data-filter="task">Спецзадания</button>
-            <button class="filter-btn" data-filter="cleared">Освобождено</button>
+            <button class="filter-btn active" data-filter="all" title="Все типы">Все</button>
+            <button class="filter-btn" data-filter="operation">Спец-оп</button>
+            <button class="filter-btn" data-filter="city">Города</button>
+            <button class="filter-btn" data-filter="zone">Зоны</button>
         </div>
 
         <div class="control-group admin-only" id="add-form-block">
-            <label for="point-name">Название объекта</label>
-            <input type="text" id="point-name" placeholder="Название">
+            <div class="click-hint">💡 Кликни по карте для автоматического ввода координат</div>
             
-            <label for="point-category">Категория / Тип миссии</label>
+            <input type="text" id="point-name" placeholder="Название объекта">
+            
+            <label for="point-category">Тип стратегического объекта</label>
             <select id="point-category">
                 <option value="operation">Спецоперация</option>
-                <option value="mission">Текущая миссия</option>
-                <option value="task">Спецзадание</option>
-                <option value="cleared">Освобождено</option>
+                <option value="city">Город</option>
+                <option value="zone">Зона контроля</option>
             </select>
 
             <div class="btn-row">
                 <div>
-                    <label for="point-lat">Широта (Lat)</label>
-                    <input type="number" id="point-lat" step="0.000001" placeholder="Координата">
+                    <input type="number" id="point-lat" step="0.000001" placeholder="Широта (Lat)">
                 </div>
                 <div>
-                    <label for="point-lon">Долгота (Lon)</label>
-                    <input type="number" id="point-lon" step="0.000001" placeholder="Координата">
+                    <input type="number" id="point-lon" step="0.000001" placeholder="Долгота (Lon)">
                 </div>
             </div>
 
-            <label for="point-radius">Радиус области контроля (метров)</label>
+            <label for="point-radius">Радиус зоны контроля (метров)</label>
             <input type="number" id="point-radius" placeholder="0" value="0">
 
-            <button id="add-btn" class="main-action">Добавить на карту</button>
+            <button id="add-btn" class="main-action">Добавить объект</button>
         </div>
 
         <div class="admin-only" id="file-management-block">
-            <h3>Данные (JSON)</h3>
             <div class="btn-row">
                 <button class="secondary" id="export-btn">Экспорт</button>
                 <button class="secondary" id="import-trigger-btn">Импорт</button>
             </div>
             <input type="file" id="import-file" accept=".json" style="display: none;">
-            <button class="danger" id="clear-all-btn" style="margin-top: 5px;">Очистить карту</button>
+            <button class="danger" id="clear-all-btn" style="margin-top: -3px; padding: 6px;">Очистить карту</button>
         </div>
 
-        <h3>Список объектов</h3>
-        <div id="location-list-container">
-            <div id="location-list"></div>
+        <div class="lists-wrapper">
+            <div class="column-container">
+                <h3>Текущие миссии</h3>
+                <div class="list-scroll">
+                    <div id="active-list"></div>
+                </div>
+            </div>
+            
+            <div class="column-container">
+                <h3>Выполненные</h3>
+                <div class="list-scroll">
+                    <div id="completed-list"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -316,39 +305,23 @@
 
         const map = L.map('map').setView([48.0089, 37.8042], 6);
 
-        // КАРТООСНОВЫ: Google Спутник (Полностью на русском, высокая детализация подписей)
+        // Качественный гибридный спутник Google на русском языке
         const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&hl=ru&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             attribution: '© Google'
-        });
-
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-        
-        // По умолчанию ставим качественный русский спутник Гугла
-        googleSatellite.addTo(map);
-
-        L.control.layers({ 
-            "Google Спутник (Русский)": googleSatellite, 
-            "Схема OSM": osmLayer 
-        }, null, { position: 'topright' }).addTo(map);
+        }).addTo(map);
 
         let locations = [];
         let isAdmin = false;
         let currentFilter = 'all';
 
-        const categoryLabels = {
-            operation: 'Спецоперация',
-            mission: 'Текущая миссия',
-            task: 'Спецзадание',
-            cleared: 'Освобождено'
-        };
+        const categoryLabels = { operation: 'Спец-оп', city: 'Город', zone: 'Зона' };
 
-        // Цветовая гамма для неброских, аккуратных тактических кругов областей
+        // Разные цвета для меток и зон
         const categoryColors = {
-            operation: '#a371f7',
-            mission: '#58a6ff',
-            task: '#f2cc60',
-            cleared: '#3fb950'
+            operation: '#a371f7', // Фиолетовый
+            city: '#58a6ff',      // Синий
+            zone: '#ff9800'       // Оранжевый
         };
 
         // Проверка пароля
@@ -358,7 +331,7 @@
                 isAdmin = true;
                 document.getElementById('add-form-block').style.display = 'block';
                 document.getElementById('file-management-block').style.display = 'block';
-                document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'block');
+                renderMapAndList(); // Перерисуем, чтобы отобразить скрытые кнопки удаления
                 passInput.style.borderColor = '#238636';
             } else {
                 alert("Неверный пароль!");
@@ -366,7 +339,14 @@
         }
         document.getElementById('login-btn').addEventListener('click', checkPassword);
 
-        // Управление фильтрами
+        // Автозаполнение координат по клику на карту
+        map.on('click', function(e) {
+            if (!isAdmin) return;
+            document.getElementById('point-lat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('point-lon').value = e.latlng.lng.toFixed(6);
+        });
+
+        // Работа верхних фильтров по типам
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -376,14 +356,15 @@
             });
         });
 
-        // Загрузка
+        // Загрузка сохраненных данных
         function loadData() {
             const saved = localStorage.getItem('strat_map_locations');
             if (saved) {
                 try {
                     locations = JSON.parse(saved).map(loc => ({
                         ...loc,
-                        id: Date.now() + Math.random().toString(36).substr(2, 5),
+                        id: loc.id || Date.now() + Math.random().toString(36).substr(2, 5),
+                        status: loc.status || 'active', // 'active' или 'completed'
                         marker: null,
                         circle: null
                     }));
@@ -394,66 +375,105 @@
 
         function saveToLocalStorage() {
             const data = locations.map(item => ({ 
-                name: item.name, lat: item.lat, lon: item.lon, radius: item.radius, category: item.category || 'operation' 
+                id: item.id, name: item.name, lat: item.lat, lon: item.lon, radius: item.radius, category: item.category, status: item.status 
             }));
             localStorage.setItem('strat_map_locations', JSON.stringify(data));
         }
 
-        // Общая функция отрисовки карты и списка с учетом фильтров
+        // Рендеринг интерфейса и карты
         function renderMapAndList() {
-            // Чистим текущие маркеры с карты
+            // Очищаем старые слои с карты
             locations.forEach(loc => {
                 if (loc.marker) map.removeLayer(loc.marker);
                 if (loc.circle) map.removeLayer(loc.circle);
             });
 
-            const listContainer = document.getElementById('location-list');
-            listContainer.innerHTML = '';
+            const activeList = document.getElementById('active-list');
+            const completedList = document.getElementById('completed-list');
+            activeList.innerHTML = '';
+            completedList.innerHTML = '';
 
             locations.forEach(loc => {
-                const category = loc.category || 'operation';
-                
-                // Проверка фильтра
-                if (currentFilter !== 'all' && currentFilter !== category) return;
+                if (currentFilter !== 'all' && currentFilter !== loc.category) return;
 
-                // Добавляем маркер на карту
-                loc.marker = L.marker([loc.lat, loc.lon]).addTo(map);
-                loc.marker.bindPopup(`<b>${loc.name}</b><br>Тип: ${categoryLabels[category]}<br>Lat: ${loc.lat}<br>Lon: ${loc.lon}`);
+                // 1. Отрисовка на карте
+                // Стилизуем маркер под цвет его категории
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background-color: ${categoryColors[loc.category]}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 4px #000;"></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                });
 
-                // Добавляем аккуратный круг области контроля (Не выделяется сильно)
+                loc.marker = L.marker([loc.lat, loc.lon], { icon: customIcon }).addTo(map);
+                loc.marker.bindPopup(`<b>${loc.name}</b><br>Тип: ${categoryLabels[loc.category]}<br>Статус: ${loc.status === 'active' ? 'Выполняется' : 'Выполнено'}`);
+
                 if (loc.radius > 0) {
                     loc.circle = L.circle([loc.lat, loc.lon], {
                         radius: parseInt(loc.radius),
-                        color: categoryColors[category], 
-                        weight: 1.5,             // Тонкая линия границы
-                        fillColor: categoryColors[category],
-                        fillOpacity: 0.12        // Прозрачная легкая заливка
+                        color: categoryColors[loc.category],
+                        weight: 1.5,
+                        fillColor: categoryColors[loc.category],
+                        fillOpacity: 0.1
                     }).addTo(map);
                 }
 
-                // Добавляем в боковой список
+                // 2. Добавление в соответствующий столбик
                 const item = document.createElement('div');
                 item.className = 'location-item';
+                
+                // Кнопки управления внутри элемента
+                let actionButtons = `<div class="item-actions">`;
+                if (loc.status === 'active') {
+                    actionButtons += `<button class="action-icon complete-btn" title="Выполнено">✓</button>`;
+                } else {
+                    actionButtons += `<button class="action-icon return-btn" title="Вернуть в текущие">⟲</button>`;
+                }
+                actionButtons += `<button class="action-icon delete-btn" title="Удалить" style="display: ${isAdmin ? 'flex' : 'none'}">×</button>`;
+                actionButtons += `</div>`;
+
                 item.innerHTML = `
-                    <div class="location-info">
-                        <div class="location-title">${loc.name}</div>
-                        <div class="location-meta">
-                            <span>${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}</span>
-                            <span class="badge badge-${category}">${categoryLabels[category]}</span>
-                        </div>
+                    <div class="location-title">${loc.name}</div>
+                    ${actionButtons}
+                    <div class="location-meta">
+                        <span>${loc.lat.toFixed(3)}, ${loc.lon.toFixed(3)}</span>
+                        <span class="badge badge-${loc.category}">${categoryLabels[loc.category]}</span>
                     </div>
-                    <button class="delete-btn" title="Удалить" style="display: ${isAdmin ? 'block' : 'none'}">×</button>
                 `;
 
+                // Клик по элементу списка центрирует камеру
                 item.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('delete-btn')) return;
-                    map.flyTo([loc.lat, loc.lon], loc.radius > 0 ? 11 : 13, { duration: 1.2 });
+                    if (e.target.classList.contains('action-icon')) return;
+                    map.flyTo([loc.lat, loc.lon], loc.radius > 0 ? 11 : 13, { duration: 1 });
                     loc.marker.openPopup();
                 });
 
+                // Обработчики кнопок смены статуса и удаления
+                const compBtn = item.querySelector('.complete-btn');
+                if (compBtn) compBtn.addEventListener('click', () => toggleStatus(loc.id, 'completed'));
+
+                const retBtn = item.querySelector('.return-btn');
+                if (retBtn) retBtn.addEventListener('click', () => toggleStatus(loc.id, 'active'));
+
                 item.querySelector('.delete-btn').addEventListener('click', () => removeLocation(loc.id));
-                listContainer.appendChild(item);
+
+                // Распределяем по колонкам
+                if (loc.status === 'active') {
+                    activeList.appendChild(item);
+                } else {
+                    completedList.appendChild(item);
+                }
             });
+        }
+
+        // Переключение задачи из текущих в выполненные и обратно
+        function toggleStatus(id, newStatus) {
+            const index = locations.findIndex(loc => loc.id === id);
+            if (index !== -1) {
+                locations[index].status = newStatus;
+                saveToLocalStorage();
+                renderMapAndList();
+            }
         }
 
         function removeLocation(id) {
@@ -468,7 +488,7 @@
             }
         }
 
-        // Кнопка добавления новой точки
+        // Добавление новой точки администратором
         document.getElementById('add-btn').addEventListener('click', () => {
             const name = document.getElementById('point-name').value.trim() || "Новый объект";
             const category = document.getElementById('point-category').value;
@@ -477,13 +497,14 @@
             const radius = parseFloat(document.getElementById('point-radius').value) || 0;
 
             if (isNaN(lat) || isNaN(lon)) {
-                alert("Укажите корректные координаты!");
+                alert("Ошибка: Сначала кликните по карте, чтобы выбрать координаты!");
                 return;
             }
 
             const newLoc = {
                 id: Date.now() + Math.random().toString(36).substr(2, 5),
                 name, lat, lon, radius, category,
+                status: 'active', // По умолчанию всегда падает в текущие миссии
                 marker: null, circle: null
             };
 
@@ -491,18 +512,16 @@
             saveToLocalStorage();
             renderMapAndList();
 
-            map.flyTo([lat, lon], 11);
-
             document.getElementById('point-name').value = '';
             document.getElementById('point-lat').value = '';
             document.getElementById('point-lon').value = '';
             document.getElementById('point-radius').value = '0';
         });
 
-        // Экспорт / Импорт / Очистка
+        // Данные (Импорт / Экспорт / Очистка карты)
         document.getElementById('export-btn').addEventListener('click', () => {
             if (locations.length === 0) return;
-            const cleanData = locations.map(l => ({ name: l.name, lat: l.lat, lon: l.lon, radius: l.radius, category: l.category }));
+            const cleanData = locations.map(l => ({ name: l.name, lat: l.lat, lon: l.lon, radius: l.radius, category: l.category, status: l.status }));
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData, null, 4));
             const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "tactical_map.json"); dl.click();
         });
@@ -516,20 +535,20 @@
                     const data = JSON.parse(evt.target.result);
                     if (Array.isArray(data)) {
                         locations = data.map(loc => ({
-                            id: Date.now() + Math.random().toString(36).substr(2, 5),
-                            name: loc.name, lat: parseFloat(loc.lat), lon: parseFloat(loc.lon), radius: parseFloat(loc.radius || 0), category: loc.category || 'operation',
+                            id: loc.id || Date.now() + Math.random().toString(36).substr(2, 5),
+                            name: loc.name, lat: parseFloat(loc.lat), lon: parseFloat(loc.lon), radius: parseFloat(loc.radius || 0), category: loc.category || 'operation', status: loc.status || 'active',
                             marker: null, circle: null
                         }));
                         saveToLocalStorage();
                         renderMapAndList();
                     }
-                } catch (err) { alert("Ошибка JSON структуры"); }
+                } catch (err) { alert("Ошибка структуры JSON"); }
             };
             reader.readAsText(file);
         });
 
         document.getElementById('clear-all-btn').addEventListener('click', () => {
-            if (confirm("Полностью очистить все точки?")) {
+            if (confirm("Вы уверены, что хотите полностью стереть все объекты?")) {
                 locations.forEach(loc => {
                     if (loc.marker) map.removeLayer(loc.marker);
                     if (loc.circle) map.removeLayer(loc.circle);
