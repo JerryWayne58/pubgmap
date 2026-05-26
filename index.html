@@ -78,7 +78,34 @@
             box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
         }
 
-        button {
+        /* Кнопки фильтров */
+        .filter-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .filter-btn {
+            padding: 8px;
+            font-size: 0.8rem;
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: normal;
+            margin-bottom: 0;
+        }
+
+        .filter-btn.active {
+            background-color: #1f6feb;
+            border-color: #58a6ff;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        button.main-action {
             background-color: #238636;
             color: #ffffff;
             font-weight: bold;
@@ -86,7 +113,7 @@
             border: none;
         }
 
-        button:hover {
+        button.main-action:hover {
             background-color: #2ea043;
         }
 
@@ -98,7 +125,6 @@
 
         button.secondary:hover {
             background-color: #30363d;
-            border-color: #8b949e;
         }
 
         button.danger {
@@ -118,11 +144,7 @@
             flex: 1;
         }
 
-        .btn-row button {
-            flex: 1;
-        }
-
-        /* Админ-зона (по умолчанию скрыта) */
+        /* Админ-зона */
         .admin-only {
             display: none;
         }
@@ -161,11 +183,24 @@
             font-size: 0.95rem;
         }
 
-        .location-coords {
+        .location-meta {
             font-size: 0.8rem;
             color: #8b949e;
             margin-top: 3px;
+            display: flex;
+            justify-content: space-between;
         }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .badge-operation { background-color: #38235c; color: #d3bcf2; }
+        .badge-mission { background-color: #1f6feb; color: #ffffff; }
+        .badge-task { background-color: #9e6a00; color: #f8e3a1; }
+        .badge-cleared { background-color: #238636; color: #ffffff; }
 
         .delete-btn {
             background: none;
@@ -181,7 +216,6 @@
 
         .delete-btn:hover {
             color: #ff7b72;
-            background: none;
         }
 
         /* Контейнер карты */
@@ -198,18 +232,11 @@
             border: 1px solid #30363d;
             border-radius: 8px;
         }
-        .leaflet-popup-close-button {
-            color: #8b949e !important;
-        }
+        .leaflet-popup-close-button { color: #8b949e !important; }
         .leaflet-bar a {
             background-color: #161b22 !important;
             color: #c9d1d9 !important;
             border-bottom: 1px solid #30363d !important;
-        }
-        .leaflet-control-layers {
-            background: #161b22 !important;
-            color: #c9d1d9 !important;
-            border: 1px solid #30363d !important;
         }
     </style>
 </head>
@@ -222,14 +249,31 @@
             <label for="admin-pass">Пароль администратора</label>
             <div class="btn-row" style="margin-bottom: 0;">
                 <input type="password" id="admin-pass" placeholder="Введи пароль" style="margin-bottom: 0;">
-                <button id="login-btn" style="width: auto; padding: 10px 15px;">Войти</button>
+                <button id="login-btn" class="main-action" style="width: auto; padding: 10px 15px;">Войти</button>
             </div>
+        </div>
+
+        <h3>Фильтр задач</h3>
+        <div class="filter-container">
+            <button class="filter-btn active" data-filter="all">Все объекты</button>
+            <button class="filter-btn" data-filter="operation">Спецоперации</button>
+            <button class="filter-btn" data-filter="mission">Текущие миссии</button>
+            <button class="filter-btn" data-filter="task">Спецзадания</button>
+            <button class="filter-btn" data-filter="cleared">Освобождено</button>
         </div>
 
         <div class="control-group admin-only" id="add-form-block">
             <label for="point-name">Название объекта</label>
-            <input type="text" id="point-name" placeholder="Введи название объекта">
+            <input type="text" id="point-name" placeholder="Название">
             
+            <label for="point-category">Категория / Тип миссии</label>
+            <select id="point-category">
+                <option value="operation">Спецоперация</option>
+                <option value="mission">Текущая миссия</option>
+                <option value="task">Спецзадание</option>
+                <option value="cleared">Освобождено</option>
+            </select>
+
             <div class="btn-row">
                 <div>
                     <label for="point-lat">Широта (Lat)</label>
@@ -241,14 +285,14 @@
                 </div>
             </div>
 
-            <label for="point-radius">Радиус зоны (метров)</label>
+            <label for="point-radius">Радиус области контроля (метров)</label>
             <input type="number" id="point-radius" placeholder="0" value="0">
 
-            <button id="add-btn">Добавить объект</button>
+            <button id="add-btn" class="main-action">Добавить на карту</button>
         </div>
 
         <div class="admin-only" id="file-management-block">
-            <h3>Управление данными (JSON)</h3>
+            <h3>Данные (JSON)</h3>
             <div class="btn-row">
                 <button class="secondary" id="export-btn">Экспорт</button>
                 <button class="secondary" id="import-trigger-btn">Импорт</button>
@@ -268,41 +312,46 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        const CORRECT_PASSWORD = "admin"; // Пароль
-
-        // Пресеты и стартовые точки чистые, как ты просил
-        const PRESET_COORDINATES = {};
-        const DEFAULT_LOCATIONS = [];
+        const CORRECT_PASSWORD = "admin"; // Твой админ-пароль
 
         const map = L.map('map').setView([48.0089, 37.8042], 6);
 
-        // СЛОИ КАРТЫ
-        // 1. Стандартная схема OpenStreetMap
+        // КАРТООСНОВЫ: Google Спутник (Полностью на русском, высокая детализация подписей)
+        const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&hl=ru&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            attribution: '© Google'
+        });
+
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-
-        // 2. Спутниковые снимки (чистый рельеф без подписей)
-        const satelliteBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
         
-        // 3. Слой прозрачных подписей (границы, города, трассы)
-        const satelliteLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}');
-        const satelliteBoundaries = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}');
+        // По умолчанию ставим качественный русский спутник Гугла
+        googleSatellite.addTo(map);
 
-        // Создаем полноценную "Гибридную" карту (Спутник + Подписи поверх него)
-        const hybridLayer = L.layerGroup([satelliteBase, satelliteBoundaries, satelliteLabels]);
-        
-        // По умолчанию включаем гибридный спутник
-        hybridLayer.addTo(map);
-
-        // Панель переключения слоев в углу карты
         L.control.layers({ 
-            "Спутник (с названиями)": hybridLayer, 
-            "Стандартная схема": osmLayer 
+            "Google Спутник (Русский)": googleSatellite, 
+            "Схема OSM": osmLayer 
         }, null, { position: 'topright' }).addTo(map);
 
         let locations = [];
         let isAdmin = false;
+        let currentFilter = 'all';
 
-        // Авторизация
+        const categoryLabels = {
+            operation: 'Спецоперация',
+            mission: 'Текущая миссия',
+            task: 'Спецзадание',
+            cleared: 'Освобождено'
+        };
+
+        // Цветовая гамма для неброских, аккуратных тактических кругов областей
+        const categoryColors = {
+            operation: '#a371f7',
+            mission: '#58a6ff',
+            task: '#f2cc60',
+            cleared: '#3fb950'
+        };
+
+        // Проверка пароля
         function checkPassword() {
             const passInput = document.getElementById('admin-pass');
             if (passInput.value === CORRECT_PASSWORD) {
@@ -312,97 +361,136 @@
                 document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'block');
                 passInput.style.borderColor = '#238636';
             } else {
-                alert("Неверный пароль администратора!");
+                alert("Неверный пароль!");
             }
         }
         document.getElementById('login-btn').addEventListener('click', checkPassword);
 
-        // Загрузка данных
+        // Управление фильтрами
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.getAttribute('data-filter');
+                renderMapAndList();
+            });
+        });
+
+        // Загрузка
         function loadData() {
             const saved = localStorage.getItem('strat_map_locations');
             if (saved) {
                 try {
-                    JSON.parse(saved).forEach(loc => addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false));
-                } catch (e) { console.error(e); }
-            } else {
-                DEFAULT_LOCATIONS.forEach(loc => addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false));
-                saveToLocalStorage();
+                    locations = JSON.parse(saved).map(loc => ({
+                        ...loc,
+                        id: Date.now() + Math.random().toString(36).substr(2, 5),
+                        marker: null,
+                        circle: null
+                    }));
+                } catch (e) { console.error(e); locations = []; }
             }
+            renderMapAndList();
         }
 
         function saveToLocalStorage() {
-            const data = locations.map(item => ({ name: item.name, lat: item.lat, lon: item.lon, radius: item.radius }));
+            const data = locations.map(item => ({ 
+                name: item.name, lat: item.lat, lon: item.lon, radius: item.radius, category: item.category || 'operation' 
+            }));
             localStorage.setItem('strat_map_locations', JSON.stringify(data));
         }
 
-        // Отрисовка маркеров и зон контроля
-        function addLocationToMapAndList(name, lat, lon, radius, shouldSave = true) {
-            const marker = L.marker([lat, lon]).addTo(map);
-            marker.bindPopup(`<b>${name}</b><br>Lat: ${lat}<br>Lon: ${lon}${radius > 0 ? `<br>Радиус: ${radius}м` : ''}`);
-
-            let circle = null;
-            if (radius > 0) {
-                // ЗДЕСЬ МЫ СДЕЛАЛИ ЗОНЫ БОЛЕЕ ЖИРНЫМИ И ЯРКИМИ
-                circle = L.circle([lat, lon], {
-                    radius: parseInt(radius), 
-                    color: '#00f0ff',       // Неоновый едкий голубой контур
-                    weight: 4,              // Толщина линии контура (было 2)
-                    fillColor: '#00f0ff',   // Цвет заливки зоны
-                    fillOpacity: 0.35       // Плотность заливки (было 0.15 — теперь в 2 раза гуще)
-                }).addTo(map);
-            }
-
-            const id = Date.now() + Math.random().toString(36).substr(2, 5);
-            locations.push({ id, name, lat, lon, radius, marker, circle });
-
-            const listContainer = document.getElementById('location-list');
-            const item = document.createElement('div');
-            item.className = 'location-item';
-            item.setAttribute('data-id', id);
-            item.innerHTML = `
-                <div class="location-info">
-                    <div class="location-title">${name}</div>
-                    <div class="location-coords">${lat.toFixed(4)}, ${lon.toFixed(4)}</div>
-                </div>
-                <button class="delete-btn" title="Удалить" style="display: ${isAdmin ? 'block' : 'none'}">×</button>
-            `;
-
-            item.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-btn')) return;
-                map.flyTo([lat, lon], radius > 0 ? 10 : 13, { duration: 1.5 });
-                marker.openPopup();
+        // Общая функция отрисовки карты и списка с учетом фильтров
+        function renderMapAndList() {
+            // Чистим текущие маркеры с карты
+            locations.forEach(loc => {
+                if (loc.marker) map.removeLayer(loc.marker);
+                if (loc.circle) map.removeLayer(loc.circle);
             });
 
-            item.querySelector('.delete-btn').addEventListener('click', () => removeLocation(id));
-            listContainer.appendChild(item);
+            const listContainer = document.getElementById('location-list');
+            listContainer.innerHTML = '';
 
-            if (shouldSave) saveToLocalStorage();
+            locations.forEach(loc => {
+                const category = loc.category || 'operation';
+                
+                // Проверка фильтра
+                if (currentFilter !== 'all' && currentFilter !== category) return;
+
+                // Добавляем маркер на карту
+                loc.marker = L.marker([loc.lat, loc.lon]).addTo(map);
+                loc.marker.bindPopup(`<b>${loc.name}</b><br>Тип: ${categoryLabels[category]}<br>Lat: ${loc.lat}<br>Lon: ${loc.lon}`);
+
+                // Добавляем аккуратный круг области контроля (Не выделяется сильно)
+                if (loc.radius > 0) {
+                    loc.circle = L.circle([loc.lat, loc.lon], {
+                        radius: parseInt(loc.radius),
+                        color: categoryColors[category], 
+                        weight: 1.5,             // Тонкая линия границы
+                        fillColor: categoryColors[category],
+                        fillOpacity: 0.12        // Прозрачная легкая заливка
+                    }).addTo(map);
+                }
+
+                // Добавляем в боковой список
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.innerHTML = `
+                    <div class="location-info">
+                        <div class="location-title">${loc.name}</div>
+                        <div class="location-meta">
+                            <span>${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}</span>
+                            <span class="badge badge-${category}">${categoryLabels[category]}</span>
+                        </div>
+                    </div>
+                    <button class="delete-btn" title="Удалить" style="display: ${isAdmin ? 'block' : 'none'}">×</button>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-btn')) return;
+                    map.flyTo([loc.lat, loc.lon], loc.radius > 0 ? 11 : 13, { duration: 1.2 });
+                    loc.marker.openPopup();
+                });
+
+                item.querySelector('.delete-btn').addEventListener('click', () => removeLocation(loc.id));
+                listContainer.appendChild(item);
+            });
         }
 
         function removeLocation(id) {
             const index = locations.findIndex(loc => loc.id === id);
             if (index !== -1) {
                 const loc = locations[index];
-                map.removeLayer(loc.marker);
+                if (loc.marker) map.removeLayer(loc.marker);
                 if (loc.circle) map.removeLayer(loc.circle);
-                document.querySelector(`.location-item[data-id="${id}"]`).remove();
                 locations.splice(index, 1);
                 saveToLocalStorage();
+                renderMapAndList();
             }
         }
 
+        // Кнопка добавления новой точки
         document.getElementById('add-btn').addEventListener('click', () => {
             const name = document.getElementById('point-name').value.trim() || "Новый объект";
+            const category = document.getElementById('point-category').value;
             const lat = parseFloat(document.getElementById('point-lat').value);
             const lon = parseFloat(document.getElementById('point-lon').value);
             const radius = parseFloat(document.getElementById('point-radius').value) || 0;
 
             if (isNaN(lat) || isNaN(lon)) {
-                alert("Ошибка: заполните поля широты и долготы вручную!");
+                alert("Укажите корректные координаты!");
                 return;
             }
 
-            addLocationToMapAndList(name, lat, lon, radius);
+            const newLoc = {
+                id: Date.now() + Math.random().toString(36).substr(2, 5),
+                name, lat, lon, radius, category,
+                marker: null, circle: null
+            };
+
+            locations.push(newLoc);
+            saveToLocalStorage();
+            renderMapAndList();
+
             map.flyTo([lat, lon], 11);
 
             document.getElementById('point-name').value = '';
@@ -411,10 +499,11 @@
             document.getElementById('point-radius').value = '0';
         });
 
-        // Данные (Импорт / Экспорт / Очистка)
+        // Экспорт / Импорт / Очистка
         document.getElementById('export-btn').addEventListener('click', () => {
             if (locations.length === 0) return;
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(locations.map(l => ({ name: l.name, lat: l.lat, lon: l.lon, radius: l.radius })), null, 4));
+            const cleanData = locations.map(l => ({ name: l.name, lat: l.lat, lon: l.lon, radius: l.radius, category: l.category }));
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData, null, 4));
             const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "tactical_map.json"); dl.click();
         });
 
@@ -426,18 +515,28 @@
                 try {
                     const data = JSON.parse(evt.target.result);
                     if (Array.isArray(data)) {
-                        data.forEach(loc => addLocationToMapAndList(loc.name, parseFloat(loc.lat), parseFloat(loc.lon), parseFloat(loc.radius || 0), false));
+                        locations = data.map(loc => ({
+                            id: Date.now() + Math.random().toString(36).substr(2, 5),
+                            name: loc.name, lat: parseFloat(loc.lat), lon: parseFloat(loc.lon), radius: parseFloat(loc.radius || 0), category: loc.category || 'operation',
+                            marker: null, circle: null
+                        }));
                         saveToLocalStorage();
+                        renderMapAndList();
                     }
-                } catch (err) { alert("Ошибка JSON"); }
+                } catch (err) { alert("Ошибка JSON структуры"); }
             };
             reader.readAsText(file);
         });
 
         document.getElementById('clear-all-btn').addEventListener('click', () => {
-            if (confirm("Удалить вообще все точки с карты?")) {
-                [...locations].forEach(loc => removeLocation(loc.id));
+            if (confirm("Полностью очистить все точки?")) {
+                locations.forEach(loc => {
+                    if (loc.marker) map.removeLayer(loc.marker);
+                    if (loc.circle) map.removeLayer(loc.circle);
+                });
+                locations = [];
                 localStorage.removeItem('strat_map_locations');
+                renderMapAndList();
             }
         });
 
