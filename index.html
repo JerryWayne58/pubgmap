@@ -122,6 +122,11 @@
             flex: 1;
         }
 
+        /* Админ-зона (по умолчанию скрыта) */
+        .admin-only {
+            display: none;
+        }
+
         /* Список локаций */
         #location-list-container {
             flex: 1;
@@ -171,6 +176,7 @@
             width: auto;
             margin: 0;
             padding: 0 5px;
+            display: none; /* Тоже только для админа */
         }
 
         .delete-btn:hover {
@@ -185,7 +191,7 @@
             background-color: #0b0e14;
         }
 
-        /* Стилизация элементов Leaflet под темную тему */
+        /* Стилизация элементов Leaflet */
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
             background: #161b22 !important;
             color: #f0f6fc !important;
@@ -210,10 +216,6 @@
             border: 1px solid #30363d !important;
             border-radius: 6px !important;
         }
-        .leaflet-control-layers-list {
-            color: #f0f6fc !important;
-            padding: 5px;
-        }
     </style>
 </head>
 <body>
@@ -222,33 +224,40 @@
         <h2>Стратег-Панель</h2>
         
         <div class="control-group">
-            <label for="point-name">Название объекта</label>
-            <input type="text" id="point-name" placeholder="Например: Суджа">
+            <label for="admin-pass">Пароль администратора</label>
+            <input type="password" id="admin-pass" placeholder="Введи пароль для редактирования">
+        </div>
+
+        <div class="control-group admin-only" id="add-form-block">
+            <label for="point-name">Название объекта (автозаполнение работает)</label>
+            <input type="text" id="point-name" placeholder="Введи город или выбери пресет">
             
             <div class="btn-row">
                 <div>
                     <label for="point-lat">Широта (Lat)</label>
-                    <input type="number" id="point-lat" step="0.000001" placeholder="51.1919">
+                    <input type="number" id="point-lat" step="0.000001" placeholder="Авто или вручную">
                 </div>
                 <div>
                     <label for="point-lon">Долгота (Lon)</label>
-                    <input type="number" id="point-lon" step="0.000001" placeholder="35.2714">
+                    <input type="number" id="point-lon" step="0.000001" placeholder="Авто или вручную">
                 </div>
             </div>
 
-            <label for="point-radius">Радиус зоны (метров)</label>
+            <label for="point-radius">Радиус зоны контроля (метров)</label>
             <input type="number" id="point-radius" placeholder="0 (если не нужен)" value="0">
 
             <button id="add-btn">Добавить объект</button>
         </div>
 
-        <h3>Управление данными (JSON)</h3>
-        <div class="btn-row">
-            <button class="secondary" id="export-btn">Экспорт</button>
-            <button class="secondary" id="import-trigger-btn">Импорт</button>
+        <div class="admin-only" id="file-management-block">
+            <h3>Управление данными (JSON)</h3>
+            <div class="btn-row">
+                <button class="secondary" id="export-btn">Экспорт</button>
+                <button class="secondary" id="import-trigger-btn">Импорт</button>
+            </div>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+            <button class="danger" id="clear-all-btn" style="margin-top: 5px;">Очистить карту</button>
         </div>
-        <input type="file" id="import-file" accept=".json" style="display: none;">
-        <button class="danger" id="clear-all-btn" style="margin-top: 5px;">Очистить карту</button>
 
         <h3>Список объектов</h3>
         <div id="location-list-container">
@@ -262,83 +271,118 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // Инициализация карты (по умолчанию центрируем на Донбасс)
+        // ТВОЙ АДМИН ПАРОЛЬ (можешь поменять на свой)
+        const CORRECT_PASSWORD = "admin"; 
+
+        // ТВОЯ БАЗА ПРЕСЕТОВ ДЛЯ АВТОЗАПОЛНЕНИЯ ПО НАЗВАНИЮ
+        const PRESET_COORDINATES = {
+            "северск": { lat: 48.8715, lon: 38.0934 },
+            "сиверськ": { lat: 48.8715, lon: 38.0934 },
+            "ямполь": { lat: 48.9328, lon: 37.9431 },
+            "ямпіль": { lat: 48.9328, lon: 37.9431 },
+            "константиновка": { lat: 48.5262, lon: 37.7058 },
+            "костянтинівка": { lat: 48.5262, lon: 37.7058 },
+            "сирия": { lat: 34.8021, lon: 38.9968 },
+            "пальмира": { lat: 34.5600, lon: 38.2939 },
+            "суджа": { lat: 51.1919, lon: 35.2714 },
+            "лнр": { lat: 48.9500, lon: 39.0000 },
+            "луганская область": { lat: 48.9500, lon: 39.0000 },
+            "днр": { lat: 48.0089, lon: 37.8042 },
+            "донецкая область": { lat: 48.0089, lon: 37.8042 },
+            "каракас": { lat: 10.4806, lon: -66.9036 },
+            "израиль": { lat: 31.0461, lon: 34.8516 },
+            "беэр-шева": { lat: 31.2521, lon: 34.7868 },
+            "остров эпштейна": { lat: 18.3003, lon: -64.8253 },
+            "ооэ": { lat: 18.3003, lon: -64.8253 },
+            "little saint james": { lat: 18.3003, lon: -64.8253 }
+        };
+
+        // ТВОЙ СТАРТОВЫЙ СПИСОК ОСВОБОЖДЕННЫХ ТЕРИТОРРИЙ (Загружается, если кэш пуст)
+        const DEFAULT_LOCATIONS = [
+            { name: "Сиверськ", lat: 48.8715, lon: 38.0934, radius: 0 },
+            { name: "Ямполь (Донецкая)", lat: 48.9328, lon: 37.9431, radius: 0 },
+            { name: "Константиновка", lat: 48.5262, lon: 37.7058, radius: 0 },
+            { name: "Суджа", lat: 51.1919, lon: 35.2714, radius: 0 },
+            { name: "ДНР", lat: 48.0089, lon: 37.8042, radius: 0 },
+            { name: "ЛНР", lat: 48.9500, lon: 39.0000, radius: 0 },
+            { name: "Освобождение Острова Эпштейна (ООЕ)", lat: 18.3003, lon: -64.8253, radius: 2000 }
+        ];
+
+        // Инициализация карты
         const map = L.map('map').setView([48.0089, 37.8042], 6);
 
-        // Настройка слоев (Схема и Спутник)
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        });
-
-        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles © Esri'
-        });
-
-        // Включаем спутник как базовый слой при старте
+        // Слои
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+        
         satelliteLayer.addTo(map);
 
-        // Панель переключения слоев в правом верхнем углу
-        const baseMaps = {
-            "Спутниковые снимки": satelliteLayer,
-            "Стандартная схема": osmLayer
-        };
+        const baseMaps = { "Спутник": satelliteLayer, "Схема": osmLayer };
         L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-        // Массив для хранения объектов на карте
         let locations = [];
+        let isAdmin = false;
 
-        // Загрузка данных из LocalStorage при запуске
-        function loadFromLocalStorage() {
+        // Проверка пароля админа
+        document.getElementById('admin-pass').addEventListener('input', function(e) {
+            if (e.target.value === CORRECT_PASSWORD) {
+                isAdmin = true;
+                document.getElementById('add-form-block').style.display = 'block';
+                document.getElementById('file-management-block').style.display = 'block';
+                document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'block');
+                this.style.borderColor = '#238636';
+            } else {
+                isAdmin = false;
+                document.getElementById('add-form-block').style.display = 'none';
+                document.getElementById('file-management-block').style.display = 'none';
+                document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'none');
+                this.style.borderColor = '#30363d';
+            }
+        });
+
+        // Автозаполнение координат при вводе названия НП
+        document.getElementById('point-name').addEventListener('input', function(e) {
+            const nameKey = e.target.value.trim().toLowerCase();
+            if (PRESET_COORDINATES[nameKey]) {
+                document.getElementById('point-lat').value = PRESET_COORDINATES[nameKey].lat;
+                document.getElementById('point-lon').value = PRESET_COORDINATES[nameKey].lon;
+            }
+        });
+
+        // Функция загрузки данных
+        function loadData() {
             const saved = localStorage.getItem('strat_map_locations');
             if (saved) {
                 try {
-                    const parsed = JSON.parse(saved);
-                    parsed.forEach(loc => {
-                        addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false);
-                    });
-                } catch (e) {
-                    console.error("Ошибка чтения кэша", e);
-                }
+                    JSON.parse(saved).forEach(loc => addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false));
+                } catch (e) { console.error(e); }
+            } else {
+                // Если кэш чист, заливаем сохраненный список автоматически
+                DEFAULT_LOCATIONS.forEach(loc => addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false));
+                saveToLocalStorage();
             }
         }
 
-        // Сохранение текущих данных в LocalStorage
         function saveToLocalStorage() {
-            const dataToSave = locations.map(item => ({
-                name: item.name,
-                lat: item.lat,
-                lon: item.lon,
-                radius: item.radius
-            }));
-            localStorage.setItem('strat_map_locations', JSON.stringify(dataToSave));
+            const data = locations.map(item => ({ name: item.name, lat: item.lat, lon: item.lon, radius: item.radius }));
+            localStorage.setItem('strat_map_locations', JSON.stringify(data));
         }
 
-        // Функция отрисовки объекта на карте и добавления в список
+        // Отрисовка точек
         function addLocationToMapAndList(name, lat, lon, radius, shouldSave = true) {
-            // Создаем маркер
             const marker = L.marker([lat, lon]).addTo(map);
-            marker.bindPopup(`<b>${name}</b><br>Широта: ${lat}<br>Долгота: ${lon}${radius > 0 ? `<br>Радиус: ${radius}м` : ''}`);
+            marker.bindPopup(`<b>${name}</b><br>Lat: ${lat}<br>Lon: ${lon}${radius > 0 ? `<br>Радиус: ${radius}м` : ''}`);
 
-            // Отрисовка радиуса, если он больше нуля
             let circle = null;
             if (radius > 0) {
                 circle = L.circle([lat, lon], {
-                    radius: parseInt(radius),
-                    color: '#58a6ff',       // Яркий неоновый синий контур
-                    fillColor: '#58a6ff',   // Цвет заливки
-                    fillOpacity: 0.15,      // Прозрачность круга
-                    weight: 2
+                    radius: parseInt(radius), color: '#58a6ff', fillColor: '#58a6ff', fillOpacity: 0.15, weight: 2
                 }).addTo(map);
             }
 
-            // Уникальный ID для удаления элемента
             const id = Date.now() + Math.random().toString(36).substr(2, 5);
+            locations.push({ id, name, lat, lon, radius, marker, circle });
 
-            const locationObject = { id, name, lat, lon, radius, marker, circle };
-            locations.push(locationObject);
-
-            // Добавляем элемент в боковую панель
             const listContainer = document.getElementById('location-list');
             const item = document.createElement('div');
             item.className = 'location-item';
@@ -348,43 +392,34 @@
                     <div class="location-title">${name}</div>
                     <div class="location-coords">${lat.toFixed(4)}, ${lon.toFixed(4)} ${radius > 0 ? `(${radius}м)` : ''}</div>
                 </div>
-                <button class="delete-btn" title="Удалить">×</button>
+                <button class="delete-btn" title="Удалить" style="display: ${isAdmin ? 'block' : 'none'}">×</button>
             `;
 
-            // Плавный перелет к точке при клике по строке в списке
             item.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-btn')) return;
                 map.flyTo([lat, lon], radius > 0 ? 11 : 13, { duration: 1.5 });
                 marker.openPopup();
             });
 
-            // Удаление конкретной точки
-            item.querySelector('.delete-btn').addEventListener('click', () => {
-                removeLocation(id);
-            });
-
+            item.querySelector('.delete-btn').addEventListener('click', () => removeLocation(id));
             listContainer.appendChild(item);
 
             if (shouldSave) saveToLocalStorage();
         }
 
-        // Функция удаления объекта по ID
         function removeLocation(id) {
             const index = locations.findIndex(loc => loc.id === id);
             if (index !== -1) {
                 const loc = locations[index];
                 map.removeLayer(loc.marker);
                 if (loc.circle) map.removeLayer(loc.circle);
-                
-                const element = document.querySelector(`.location-item[data-id="${id}"]`);
-                if (element) element.remove();
-                
+                document.querySelector(`.location-item[data-id="${id}"]`).remove();
                 locations.splice(index, 1);
                 saveToLocalStorage();
             }
         }
 
-        // Обработка кнопки добавления точки вручную
+        // Кнопка добавить
         document.getElementById('add-btn').addEventListener('click', () => {
             const name = document.getElementById('point-name').value.trim() || "Новая точка";
             const lat = parseFloat(document.getElementById('point-lat').value);
@@ -392,78 +427,50 @@
             const radius = parseFloat(document.getElementById('point-radius').value) || 0;
 
             if (isNaN(lat) || isNaN(lon)) {
-                alert("Пожалуйста, заполните поля координат корректно!");
+                alert("Координаты не найдены! Введите их руками или проверьте название.");
                 return;
             }
 
             addLocationToMapAndList(name, lat, lon, radius);
             map.flyTo([lat, lon], 12);
 
-            // Сброс полей формы
             document.getElementById('point-name').value = '';
             document.getElementById('point-lat').value = '';
             document.getElementById('point-lon').value = '';
             document.getElementById('point-radius').value = '0';
         });
 
-        // Экспорт базы данных в JSON-файл
+        // Экспорт / Импорт / Очистка
         document.getElementById('export-btn').addEventListener('click', () => {
-            if (locations.length === 0) {
-                alert("Карта пуста, нечего экспортировать.");
-                return;
-            }
-            const cleanData = locations.map(l => ({
-                name: l.name, lat: l.lat, lon: l.lon, radius: l.radius
-            }));
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData, null, 4));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", "tactical_map_data.json");
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            if (locations.length === 0) return;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(locations.map(l => ({ name: l.name, lat: l.lat, lon: l.lon, radius: l.radius })), null, 4));
+            const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "tactical_map.json"); dl.click();
         });
 
-        // Триггер клика по скрытому input file для импорта
-        document.getElementById('import-trigger-btn').addEventListener('click', () => {
-            document.getElementById('import-file').click();
-        });
-
-        // Чтение загруженного файла JSON
+        document.getElementById('import-trigger-btn').addEventListener('click', () => document.getElementById('import-file').click());
         document.getElementById('import-file').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = function(evt) {
                 try {
-                    const importedData = JSON.parse(evt.target.result);
-                    if (Array.isArray(importedData)) {
-                        importedData.forEach(loc => {
-                            addLocationToMapAndList(loc.name, parseFloat(loc.lat), parseFloat(loc.lon), parseFloat(loc.radius || 0), false);
-                        });
+                    const data = JSON.parse(evt.target.result);
+                    if (Array.isArray(data)) {
+                        data.forEach(loc => addLocationToMapAndList(loc.name, parseFloat(loc.lat), parseFloat(loc.lon), parseFloat(loc.radius || 0), false));
                         saveToLocalStorage();
-                        alert(`Успешно импортировано меток: ${importedData.length}`);
-                    } else {
-                        alert("Некорректный формат файла JSON.");
                     }
-                } catch (err) {
-                    alert("Ошибка обработки JSON-файла.");
-                }
+                } catch (err) { alert("Ошибка JSON"); }
             };
             reader.readAsText(file);
         });
 
-        // Полная очистка всей карты
         document.getElementById('clear-all-btn').addEventListener('click', () => {
-            if (confirm("Вы уверены, что хотите полностью очистить карту и кэш?")) {
+            if (confirm("Удалить все объекты?")) {
                 [...locations].forEach(loc => removeLocation(loc.id));
                 localStorage.removeItem('strat_map_locations');
             }
         });
 
-        // Запуск считывания сохраненных данных при старте страницы
-        window.onload = loadFromLocalStorage;
+        window.onload = loadData;
     </script>
 </body>
 </html>
