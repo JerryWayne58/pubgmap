@@ -176,7 +176,7 @@
             width: auto;
             margin: 0;
             padding: 0 5px;
-            display: none; /* Тоже только для админа */
+            display: none;
         }
 
         .delete-btn:hover {
@@ -191,7 +191,7 @@
             background-color: #0b0e14;
         }
 
-        /* Стилизация элементов Leaflet */
+        /* Стилизация Leaflet */
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
             background: #161b22 !important;
             color: #f0f6fc !important;
@@ -206,15 +206,10 @@
             color: #c9d1d9 !important;
             border-bottom: 1px solid #30363d !important;
         }
-        .leaflet-bar a:hover {
-            background-color: #21262d !important;
-            color: #ffffff !important;
-        }
         .leaflet-control-layers {
             background: #161b22 !important;
             color: #c9d1d9 !important;
             border: 1px solid #30363d !important;
-            border-radius: 6px !important;
         }
     </style>
 </head>
@@ -225,26 +220,29 @@
         
         <div class="control-group">
             <label for="admin-pass">Пароль администратора</label>
-            <input type="password" id="admin-pass" placeholder="Введи пароль для редактирования">
+            <div class="btn-row" style="margin-bottom: 0;">
+                <input type="password" id="admin-pass" placeholder="Введи пароль" style="margin-bottom: 0;">
+                <button id="login-btn" style="width: auto; padding: 10px 15px;">Войти</button>
+            </div>
         </div>
 
         <div class="control-group admin-only" id="add-form-block">
-            <label for="point-name">Название объекта (автозаполнение работает)</label>
-            <input type="text" id="point-name" placeholder="Введи город или выбери пресет">
+            <label for="point-name">Название объекта</label>
+            <input type="text" id="point-name" placeholder="Введи город или пресет">
             
             <div class="btn-row">
                 <div>
                     <label for="point-lat">Широта (Lat)</label>
-                    <input type="number" id="point-lat" step="0.000001" placeholder="Авто или вручную">
+                    <input type="number" id="point-lat" step="0.000001" placeholder="Авто">
                 </div>
                 <div>
                     <label for="point-lon">Долгота (Lon)</label>
-                    <input type="number" id="point-lon" step="0.000001" placeholder="Авто или вручную">
+                    <input type="number" id="point-lon" step="0.000001" placeholder="Авто">
                 </div>
             </div>
 
-            <label for="point-radius">Радиус зоны контроля (метров)</label>
-            <input type="number" id="point-radius" placeholder="0 (если не нужен)" value="0">
+            <label for="point-radius">Радиус зоны (метров)</label>
+            <input type="number" id="point-radius" placeholder="0" value="0">
 
             <button id="add-btn">Добавить объект</button>
         </div>
@@ -261,8 +259,7 @@
 
         <h3>Список объектов</h3>
         <div id="location-list-container">
-            <div id="location-list">
-                </div>
+            <div id="location-list"></div>
         </div>
     </div>
 
@@ -271,76 +268,183 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // ТВОЙ АДМИН ПАРОЛЬ (можешь поменять на свой)
-        const CORRECT_PASSWORD = "admin"; 
+        const CORRECT_PASSWORD = "admin"; // Твой пароль
 
-        // ТВОЯ БАЗА ПРЕСЕТОВ ДЛЯ АВТОЗАПОЛНЕНИЯ ПО НАЗВАНИЮ
+        // ОГРОМНЫЙ СЛОВАРЬ ПРЕСЕТОВ ДЛЯ АВТОПОДСТАНОВКИ КООРДИНАТ
         const PRESET_COORDINATES = {
-            "северск": { lat: 48.8715, lon: 38.0934 },
-            "сиверськ": { lat: 48.8715, lon: 38.0934 },
-            "ямполь": { lat: 48.9328, lon: 37.9431 },
-            "ямпіль": { lat: 48.9328, lon: 37.9431 },
-            "константиновка": { lat: 48.5262, lon: 37.7058 },
-            "костянтинівка": { lat: 48.5262, lon: 37.7058 },
+            "крым": { lat: 45.3493, lon: 34.4979 },
+            "запорожье": { lat: 47.8388, lon: 35.1396 },
+            "луганск": { lat: 48.5740, lon: 39.3078 },
+            "херсон": { lat: 46.6354, lon: 32.6169 },
+            "бахмут": { lat: 48.5956, lon: 38.0084 },
+            "донецк": { lat: 48.0159, lon: 37.8028 },
+            "змеиный остров": { lat: 45.2530, lon: 30.2032 },
+            "остров змеиный": { lat: 45.2530, lon: 30.2032 },
+            "карабах": { lat: 39.8263, lon: 46.7494 },
+            "приднестровье": { lat: 46.8500, lon: 29.6333 },
+            "авдеевка": { lat: 48.1366, lon: 37.7491 },
+            "белгород": { lat: 50.5936, lon: 36.5873 },
+            "судан": { lat: 12.8628, lon: 30.2176 },
             "сирия": { lat: 34.8021, lon: 38.9968 },
-            "пальмира": { lat: 34.5600, lon: 38.2939 },
+            "иран": { lat: 32.4279, lon: 53.6880 },
+            "ирак": { lat: 33.3152, lon: 44.3661 },
+            "харьков": { lat: 50.0038, lon: 36.2304 },
+            "курск": { lat: 51.7373, lon: 36.1874 },
+            "афганистан": { lat: 33.9391, lon: 67.7100 },
+            "чернобыль": { lat: 51.2763, lon: 30.2219 },
             "суджа": { lat: 51.1919, lon: 35.2714 },
+            "курская область": { lat: 51.4500, lon: 36.0000 },
+            "мали": { lat: 17.5707, lon: -3.9962 },
+            "покровск": { lat: 48.2810, lon: 37.1764 },
+            "торецк": { lat: 48.3916, lon: 37.8447 },
+            "сомали": { lat: 5.1521, lon: 46.1996 },
+            "курахове": { lat: 47.9852, lon: 37.2435 },
+            "курахово": { lat: 47.9852, lon: 37.2435 },
+            "часiв яр": { lat: 48.5861, lon: 37.8384 },
+            "часов яр": { lat: 48.5861, lon: 37.8384 },
+            "вовчаньск": { lat: 50.2912, lon: 36.9365 },
+            "волчанск": { lat: 50.2912, lon: 36.9365 },
+            "палестина": { lat: 31.9522, lon: 35.2332 },
+            "северодонецк": { lat: 48.9484, lon: 38.4929 },
+            "нью йорк": { lat: 48.3290, lon: 37.8500 },
+            "нью-йорк": { lat: 48.3290, lon: 37.8500 },
+            "надiя": { lat: 49.3410, lon: 37.9310 },
+            "надежда": { lat: 49.3410, lon: 37.9310 },
+            "вугледар": { lat: 47.7792, lon: 37.2483 },
+            "угледар": { lat: 47.7792, lon: 37.2483 },
+            "соледар": { lat: 48.6953, lon: 38.0673 },
+            "олешківські піски": { lat: 46.5833, lon: 33.0500 },
+            "олешковские пески": { lat: 46.5833, lon: 33.0500 },
+            "дніпроенергія": { lat: 47.5020, lon: 34.4010 },
+            "днипроэнергия": { lat: 47.5020, lon: 34.4010 },
+            "сумская область": { lat: 51.0000, lon: 34.0000 },
+            "демидiвка": { lat: 50.4320, lon: 25.3280 },
+            "демидовка": { lat: 50.4320, lon: 25.3280 },
+            "котлине": { lat: 48.2430, lon: 36.7210 },
+            "котлино": { lat: 48.2430, lon: 36.7210 },
+            "таллибан": { lat: 34.5285, lon: 69.1725 },
+            "талибан": { lat: 34.5285, lon: 69.1725 },
+            "энергодар": { lat: 47.4986, lon: 34.6562 },
+            "кринки": { lat: 46.7328, lon: 33.1214 },
+            "крынки": { lat: 46.7328, lon: 33.1214 },
+            "олешки": { lat: 46.6181, lon: 32.7231 },
+            "нова каховка": { lat: 46.7516, lon: 33.3644 },
+            "гола пристань": { lat: 46.5278, lon: 32.5286 },
+            "голая пристань": { lat: 46.5278, lon: 32.5286 },
+            "сахара": { lat: 23.8000, lon: 11.3000 },
+            "журавка": { lat: 48.2610, lon: 37.5140 },
+            "біловоди": { lat: 51.1960, lon: 34.6140 },
+            "беловоды": { lat: 51.1960, lon: 34.6140 },
+            "лисичанск": { lat: 48.9179, lon: 38.4239 },
+            "марї'нка": { lat: 47.9422, lon: 37.5025 },
+            "марьинка": { lat: 47.9422, lon: 37.5025 },
+            "горлівка": { lat: 48.3060, lon: 38.0163 },
+            "горловка": { lat: 48.3060, lon: 38.0163 },
+            "тегеран": { lat: 35.6892, lon: 51.3890 },
+            "казахстан": { lat: 48.0196, lon: 66.9237 },
+            "дачне": { lat: 48.0630, lon: 37.0510 },
+            "дачное": { lat: 48.0630, lon: 37.0510 },
+            "зеленый гай": { lat: 47.7810, lon: 35.5390 },
+            "ямпiль": { lat: 48.9328, lon: 37.9431 },
+            "ямполь": { lat: 48.9328, lon: 37.9431 },
+            "золотий колодязь": { lat: 48.5580, lon: 37.1120 },
+            "золотой колодец": { lat: 48.5580, lon: 37.1120 },
+            "кучеров яр": { lat: 48.4890, lon: 36.9910 },
+            "орехов": { lat: 47.5672, lon: 35.7865 },
+            "сицилия": { lat: 37.5990, lon: 14.0154 },
+            "купянск": { lat: 49.7082, lon: 37.6164 },
+            "гуляйполе": { lat: 47.6625, lon: 36.2642 },
+            "мирноград": { lat: 48.2917, lon: 37.2725 },
+            "сiверськ": { lat: 48.8715, lon: 38.0934 },
+            "северск": { lat: 48.8715, lon: 38.0934 },
+            "параша": { lat: 48.8715, lon: 38.0934 },
+            "вьетнам": { lat: 14.0583, lon: 108.2772 },
+            "краматорск": { lat: 48.7390, lon: 37.5838 },
+            "констянтинiвка": { lat: 48.5262, lon: 37.7058 },
+            "константиновка": { lat: 48.5262, lon: 37.7058 },
+            "грабовське": { lat: 50.6970, lon: 35.4320 },
+            "грабовское": { lat: 50.6970, lon: 35.4320 },
+            "игил": { lat: 35.1404, lon: 40.1558 },
+            "рдк": { lat: 50.5936, lon: 36.5873 },
+            "whiterex": { lat: 50.5936, lon: 36.5873 },
+            "дамаск": { lat: 33.5138, lon: 36.2765 },
+            "соснiвка": { lat: 50.4120, lon: 36.1320 },
+            "сосновка": { lat: 50.4120, lon: 36.1320 },
             "лнр": { lat: 48.9500, lon: 39.0000 },
-            "луганская область": { lat: 48.9500, lon: 39.0000 },
-            "днр": { lat: 48.0089, lon: 37.8042 },
-            "донецкая область": { lat: 48.0089, lon: 37.8042 },
             "каракас": { lat: 10.4806, lon: -66.9036 },
+            "мадуро": { lat: 10.4806, lon: -66.9036 },
+            "днр": { lat: 48.0089, lon: 37.8042 },
+            "мариуполь": { lat: 47.0971, lon: 37.5433 },
+            "абданан": { lat: 32.9926, lon: 47.4172 },
+            "гренландия": { lat: 71.7069, lon: -42.6043 },
+            "каланчак": { lat: 46.2558, lon: 33.2908 },
+            "мелитополь": { lat: 46.8550, lon: 35.3581 },
+            "степногірськ": { lat: 47.5888, lon: 35.3672 },
+            "степногорск": { lat: 47.5888, lon: 35.3672 },
+            "севастополь": { lat: 44.5947, lon: 33.5220 },
+            "симферополь": { lat: 44.9521, lon: 34.1024 },
+            "ялта": { lat: 44.4952, lon: 34.1663 },
+            "дубай": { lat: 25.2048, lon: 55.2708 },
             "израиль": { lat: 31.0461, lon: 34.8516 },
-            "беэр-шева": { lat: 31.2521, lon: 34.7868 },
-            "остров эпштейна": { lat: 18.3003, lon: -64.8253 },
+            "троянский конь": { lat: 31.0461, lon: 34.8516 },
+            "днепропетровская область": { lat: 48.4647, lon: 35.0462 },
+            "павлоград": { lat: 48.5244, lon: 35.8712 },
+            "джанкой": { lat: 45.7095, lon: 34.3934 },
+            "керчь": { lat: 45.3550, lon: 36.4683 },
+            "катар": { lat: 25.3548, lon: 51.1839 },
+            "киев": { lat: 50.4501, lon: 30.5234 },
+            "остров эпшейна": { lat: 18.3003, lon: -64.8253 },
             "ооэ": { lat: 18.3003, lon: -64.8253 },
-            "little saint james": { lat: 18.3003, lon: -64.8253 }
+            "киевская область": { lat: 50.4500, lon: 30.5200 },
+            "мала токмачка": { lat: 47.5342, lon: 35.8924 },
+            "малая токмачка": { lat: 47.5342, lon: 35.8924 }
         };
 
-        // ТВОЙ СТАРТОВЫЙ СПИСОК ОСВОБОЖДЕННЫХ ТЕРИТОРРИЙ (Загружается, если кэш пуст)
+        // ТВОЙ ОФИЦИАЛЬНЫЙ СТАРТОВЫЙ СПИСОК (ОСВОБОЖДЕНО)
         const DEFAULT_LOCATIONS = [
-            { name: "Сиверськ", lat: 48.8715, lon: 38.0934, radius: 0 },
-            { name: "Ямполь (Донецкая)", lat: 48.9328, lon: 37.9431, radius: 0 },
-            { name: "Константиновка", lat: 48.5262, lon: 37.7058, radius: 0 },
-            { name: "Суджа", lat: 51.1919, lon: 35.2714, radius: 0 },
+            { name: "Сiверськ (Параша)", lat: 48.8715, lon: 38.0934, radius: 0 },
+            { name: "Ямпіль", lat: 48.9328, lon: 37.9431, radius: 0 },
+            { name: "Констянтинiвка", lat: 48.5262, lon: 37.7058, radius: 0 },
+            { name: "Суджа (Курская обл.)", lat: 51.1919, lon: 35.2714, radius: 0 },
             { name: "ДНР", lat: 48.0089, lon: 37.8042, radius: 0 },
             { name: "ЛНР", lat: 48.9500, lon: 39.0000, radius: 0 },
-            { name: "Освобождение Острова Эпштейна (ООЕ)", lat: 18.3003, lon: -64.8253, radius: 2000 }
+            { name: "ООЭ (Остров Эпштейна)", lat: 18.3003, lon: -64.8253, radius: 3000 },
+            { name: "Бахмут", lat: 48.5956, lon: 38.0084, radius: 0 },
+            { name: "Авдиивка", lat: 48.1366, lon: 37.7491, radius: 0 },
+            { name: "Нью Йорк", lat: 48.3290, lon: 37.8500, radius: 0 },
+            { name: "Змеиный остров", lat: 45.2530, lon: 30.2032, radius: 0 },
+            { name: "Мариуполь", lat: 47.0971, lon: 37.5433, radius: 0 },
+            { name: "Энергодар", lat: 47.4986, lon: 34.6562, radius: 0 },
+            { name: "Сирия (Дамаск / Пальмира)", lat: 34.8021, lon: 38.9968, radius: 250000 },
+            { name: "Израиль (Троянский Конь)", lat: 31.0461, lon: 34.8516, radius: 120000 }
         ];
 
-        // Инициализация карты
         const map = L.map('map').setView([48.0089, 37.8042], 6);
-
-        // Слои
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
         const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
         
         satelliteLayer.addTo(map);
-
-        const baseMaps = { "Спутник": satelliteLayer, "Схема": osmLayer };
-        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+        L.control.layers({ "Спутник": satelliteLayer, "Схема": osmLayer }, null, { position: 'topright' }).addTo(map);
 
         let locations = [];
         let isAdmin = false;
 
-        // Проверка пароля админа
-        document.getElementById('admin-pass').addEventListener('input', function(e) {
-            if (e.target.value === CORRECT_PASSWORD) {
+        // Кнопка авторизации
+        function checkPassword() {
+            const passInput = document.getElementById('admin-pass');
+            if (passInput.value === CORRECT_PASSWORD) {
                 isAdmin = true;
                 document.getElementById('add-form-block').style.display = 'block';
                 document.getElementById('file-management-block').style.display = 'block';
                 document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'block');
-                this.style.borderColor = '#238636';
+                passInput.style.borderColor = '#238636';
             } else {
-                isAdmin = false;
-                document.getElementById('add-form-block').style.display = 'none';
-                document.getElementById('file-management-block').style.display = 'none';
-                document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'none');
-                this.style.borderColor = '#30363d';
+                alert("Неверный пароль администратора!");
             }
-        });
+        }
+        document.getElementById('login-btn').addEventListener('click', checkPassword);
 
-        // Автозаполнение координат при вводе названия НП
+        // Живой перехват названия для автоподстановки координат
         document.getElementById('point-name').addEventListener('input', function(e) {
             const nameKey = e.target.value.trim().toLowerCase();
             if (PRESET_COORDINATES[nameKey]) {
@@ -349,7 +453,7 @@
             }
         });
 
-        // Функция загрузки данных
+        // Загрузка
         function loadData() {
             const saved = localStorage.getItem('strat_map_locations');
             if (saved) {
@@ -357,7 +461,6 @@
                     JSON.parse(saved).forEach(loc => addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false));
                 } catch (e) { console.error(e); }
             } else {
-                // Если кэш чист, заливаем сохраненный список автоматически
                 DEFAULT_LOCATIONS.forEach(loc => addLocationToMapAndList(loc.name, loc.lat, loc.lon, loc.radius, false));
                 saveToLocalStorage();
             }
@@ -368,7 +471,6 @@
             localStorage.setItem('strat_map_locations', JSON.stringify(data));
         }
 
-        // Отрисовка точек
         function addLocationToMapAndList(name, lat, lon, radius, shouldSave = true) {
             const marker = L.marker([lat, lon]).addTo(map);
             marker.bindPopup(`<b>${name}</b><br>Lat: ${lat}<br>Lon: ${lon}${radius > 0 ? `<br>Радиус: ${radius}м` : ''}`);
@@ -390,14 +492,14 @@
             item.innerHTML = `
                 <div class="location-info">
                     <div class="location-title">${name}</div>
-                    <div class="location-coords">${lat.toFixed(4)}, ${lon.toFixed(4)} ${radius > 0 ? `(${radius}м)` : ''}</div>
+                    <div class="location-coords">${lat.toFixed(4)}, ${lon.toFixed(4)}</div>
                 </div>
                 <button class="delete-btn" title="Удалить" style="display: ${isAdmin ? 'block' : 'none'}">×</button>
             `;
 
             item.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-btn')) return;
-                map.flyTo([lat, lon], radius > 0 ? 11 : 13, { duration: 1.5 });
+                map.flyTo([lat, lon], radius > 0 ? 10 : 13, { duration: 1.5 });
                 marker.openPopup();
             });
 
@@ -419,20 +521,19 @@
             }
         }
 
-        // Кнопка добавить
         document.getElementById('add-btn').addEventListener('click', () => {
-            const name = document.getElementById('point-name').value.trim() || "Новая точка";
+            const name = document.getElementById('point-name').value.trim() || "Новый объект";
             const lat = parseFloat(document.getElementById('point-lat').value);
             const lon = parseFloat(document.getElementById('point-lon').value);
             const radius = parseFloat(document.getElementById('point-radius').value) || 0;
 
             if (isNaN(lat) || isNaN(lon)) {
-                alert("Координаты не найдены! Введите их руками или проверьте название.");
+                alert("Ошибка: введите название из списка пресетов или заполните координаты вручную!");
                 return;
             }
 
             addLocationToMapAndList(name, lat, lon, radius);
-            map.flyTo([lat, lon], 12);
+            map.flyTo([lat, lon], 11);
 
             document.getElementById('point-name').value = '';
             document.getElementById('point-lat').value = '';
@@ -464,7 +565,7 @@
         });
 
         document.getElementById('clear-all-btn').addEventListener('click', () => {
-            if (confirm("Удалить все объекты?")) {
+            if (confirm("Удалить вообще все точки с карты?")) {
                 [...locations].forEach(loc => removeLocation(loc.id));
                 localStorage.removeItem('strat_map_locations');
             }
